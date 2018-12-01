@@ -29,7 +29,7 @@ IEQL queries provide three main features:
 
 ### How can I use IEQL myself?
 
-To get started with IEQL, either use the reference Rust implementation or create your own based off of the [open specification]().
+To get started with IEQL, either use the reference Rust implementation or create your own based off of the [open specification](SPECIFICATION.md).
 
 ### Licensing
 
