@@ -1,9 +1,9 @@
 <p align="center">
   <h3 align="center"><img src="assets/ieql_logo.png" width="250px"></img></h3>
 
-  <p align="center">
+  <h4 align="center">
      An open standard for monitoring Internet content.
-  </p>
+  </h4>
 </p>
 
 ---
