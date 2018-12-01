@@ -2,7 +2,7 @@
   <h3 align="center"><img src="assets/ieql_logo.png" width="250px"></img></h3>
 
   <h4 align="center">
-     An open standard for monitoring Internet content.
+     An open standard for monitoring Internet content
   </h4>
 </p>
 
@@ -14,7 +14,7 @@ This repository contains the specification and reference implementation for IEQL
 
 IEQL queries have two parts: the _triggers_ and the _threshold_.
 
-**Triggers** are individual queries, typically Regex patterns. Triggers can be configured to match only on certain elements of Internet documents (such as `body text` or `HTTP headers`), and also to match on Internet documents at a certain location (for example, every document from domain `nytimes.com`).
+**Triggers** are individual queries, typically RegEx patterns. Triggers can be configured to match only on certain elements of Internet documents (such as `body text` or `HTTP headers`), and also to match on Internet documents at a certain location (for example, every document from domain `nytimes.com`).
 
 The **threshold** are the compositions of triggers that are required in order for the query to match. For example, an IEQL might have three different triggers: Trigger A, Trigger B, and Trigger C. An IEQL query could be defined such that a match is defined as any time Trigger A fires and _either_ Trigger B _or_ Trigger C fires. Alternatively, the IEQL query's match threshold could be _any two triggers_. These trigger compositions are an important part of what makes IEQL powerful.
 
@@ -29,7 +29,7 @@ IEQL queries provide three main features:
 
 ### How can I use IEQL myself?
 
-To get started with IEQL, either use the reference Rust implementation or create your own based off of the [open standard]().
+To get started with IEQL, either use the reference Rust implementation or create your own based off of the [open specification]().
 
 ### Licensing
 
