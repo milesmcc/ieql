@@ -8,15 +8,15 @@ IEQL queries must be valid JSON objects. They must have the root keys `triggers`
 
 ```json
 {
-    "triggers": [<array of trigger objects>],
-    "scope": {
-        "documents": <RegEx to match URLs to consider, or `*`>,
-        "content": <the type of content to match>
-    },
-    "threshold": {
-        "considers": [<array of trigger IDs and/or other compositions>],
-        "required": <number of considered items required for a match>
-    }
+  "triggers": ["<array of trigger objects>"],
+  "scope": {
+    "documents": "<RegEx to match URLs to consider, or `*`>",
+    "content": "<the type of content to match>"
+  },
+  "threshold": {
+    "considers": ["<array of trigger IDs and/or other compositions>"],
+    "required": "<number of considered items required for a match>"
+  }
 }
 ```
 
