@@ -1,0 +1,6 @@
+[package]
+name = "ieql"
+version = "0.1.0"
+authors = ["Miles McCain <0@rmrm.io>"]
+
+[dependencies]
