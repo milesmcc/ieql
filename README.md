@@ -2,7 +2,7 @@
   <h3 align="center"><img src="assets/ieql_logo.png" width="250px"></img></h3>
 
   <p align="center">
-     IEQL (pronounced _equal_) is an open standard for monitoring and querying Internet content.
+     An open standard for monitoring Internet content.
   </p>
 </p>
 
