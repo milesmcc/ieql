@@ -6,34 +6,48 @@ This document specifies the format of IEQL queries. For an overview of IEQL, ple
 
 IEQL queries must be valid JSON objects. They must have the root keys `triggers`, `scope`, `threshold`, and `response` (all other root keys are optional). Note that the following is not valid JSON; instead, it is meant to provide a primer on the general structure of a IEQL query.
 
-```json
+```
 {
-  "triggers": ["<array of trigger objects>"],
+  "triggers": <array of trigger objects>,
   "scope": {
-    "documents": "<RegEx to match URLs to consider, or `*`>",
+    "documents": <pattern object>,
     "content": "<the type of content to match>"
   },
   "threshold": {
-    "considers": ["<array of trigger IDs and/or other compositions>"],
-    "required": "<number of considered items required for a match>"
+    "considers": <array of trigger IDs and/or other compositions>,
+    "required": <number of considered items required for a match>
   },
   "response": {
-    "type": "<`full` or `partial`>",
-    "include": ["<array of items to include>"]
+    "type": <`full` or `partial`>,
+    "include": <array of items to include>
   }
+}
+```
+#### Pattern Object
+
+**Pattern objects** are used for RegEx-like pattern matching throughout IEQL. They must have two keys: `content` and `kind`. `content` is the content to match (either a RegEx query or raw text), and `kind` defines whether the parser should treat `content` as RegEx or as raw text. (`kind` may be one of `raw` or `regex`.)
+
+An example pattern object is the following:
+
+```json
+{
+  "content": "something.+",
+  "kind": "regex"
 }
 ```
 
 #### Trigger Object
 
-A **trigger object** must have two keys: `type`, `pattern`, and `id`. `type` defines the type of matching to perform, and may be one of `regex` (for RegEx matching) or `raw` (for literal content check). (These types are strings.) `pattern` (string) defines that which is actually being searched for (this would be, for example, a RegEx pattern). Finally, `id` is the unique ID assigned to the trigger object that will be referenced later in the `threshold` (string).
+A **trigger object** must have two keys: `pattern` and `id`. `pattern` must be a valid pattern object. `id` is the unique ID assigned to the trigger object that will be referenced later in the `threshold` (string).
 
 An example trigger object might look like the following:
 
 ```json
 {
-  "type": "regex",
-  "pattern": "IEQL is ([ A-Za-z]+)(awesome|incredible)",
+  "pattern": {
+    "content": "IEQL is ([ A-Za-z]+)(awesome|incredible)",
+    "kind": "regex"
+  },
   "id": "awesomeQuery"
 }
 ```
@@ -42,7 +56,7 @@ An example trigger object might look like the following:
 
 The **scope** defines the type of data that will be fed to the triggers. The **scope** must be a valid JSON object with two keys: `documents` and `content`.
 
-**`documents`** (string) must be a valid RegEx pattern, and matches the URL of documents. For example, for a IEQL query to be only performed on `.net` or `.org` domains, `documents` would be set to `(https?:\/\/)?(www\.)?[a-z0-9-]+\.(net|org)(\.[a-z]{2,3})?`. It seems complicated, but that's the power of RegEx! To match all URLs, set `documents` to `.+`.
+**`documents`** (string) must be a valid pattern object, and matches the URL of documents. For example, for a IEQL query to be only performed on `.net` or `.org` domains, `documents` would be set to match the pattern `(https?:\/\/)?(www\.)?[a-z0-9-]+\.(net|org)(\.[a-z]{2,3})?`. It seems complicated, but that's the power of RegEx! To match all URLs, set `documents` to the RegEx pattern object representing `.+`.
 
 **`content`** (string) may be one of `raw` or `text`. (Additional values are possible; refer to your implementations' source code for more information about the available content types.) `raw` means that the triggers will be fed the raw document content. `text` means that the trigger will be fed a cleaned version of the document with only its text (note that this functionality is only available for some content types; if the raw text cannot be extracted, the program will be provided the equivalent of `raw`).
 
@@ -51,7 +65,10 @@ An example scope definition might be as follows:
 ```json
 ...
 "scope": {
-  "documents": ".+",
+  "pattern": {
+    "content": ".+",
+    "type": "regex"
+  },
   "content": "text"
 }
 ...
