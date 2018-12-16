@@ -1,3 +1,8 @@
+extern crate regex;
+
+pub mod common;
+pub mod query;
+
 #[cfg(test)]
 mod tests {
     #[test]
