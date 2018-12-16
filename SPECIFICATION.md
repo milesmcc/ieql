@@ -4,7 +4,7 @@ This document specifies the format of IEQL queries. For an overview of IEQL, ple
 
 ## Data Format
 
-IEQL queries must be valid JSON objects. They must have the root keys `triggers`, `scope`, and `threshold` (all other root keys are optional). Note that the following is not valid JSON; instead, it is meant to provide a primer on the general structure of a IEQL query.
+IEQL queries must be valid JSON objects. They must have the root keys `triggers`, `scope`, `threshold`, and `response` (all other root keys are optional). Note that the following is not valid JSON; instead, it is meant to provide a primer on the general structure of a IEQL query.
 
 ```json
 {
@@ -16,6 +16,10 @@ IEQL queries must be valid JSON objects. They must have the root keys `triggers`
   "threshold": {
     "considers": ["<array of trigger IDs and/or other compositions>"],
     "required": "<number of considered items required for a match>"
+  },
+  "response": {
+    "type": "<`full` or `partial`>",
+    "include": ["<array of items to include>"]
   }
 }
 ```
@@ -40,7 +44,7 @@ The **scope** defines the type of data that will be fed to the triggers. The **s
 
 **`documents`** (string) must be a valid RegEx pattern, and matches the URL of documents. For example, for a IEQL query to be only performed on `.net` or `.org` domains, `documents` would be set to `(https?:\/\/)?(www\.)?[a-z0-9-]+\.(net|org)(\.[a-z]{2,3})?`. It seems complicated, but that's the power of RegEx! To match all URLs, set `documents` to `.+`.
 
-**`content`** (string) may be one of `raw`, `text`, or `headers`. (Additional values are possible; refer to your implementations' source code for more information about the available content types.) `raw` means that the triggers will be fed the raw HTTP response—headers, HTML, and all. `text` means that the trigger will be fed a cleaned version of the document with only its text. `headers` means that the triggers will be passed just the HTML headers (unmodified).
+**`content`** (string) may be one of `raw` or `text`. (Additional values are possible; refer to your implementations' source code for more information about the available content types.) `raw` means that the triggers will be fed the raw document content. `text` means that the trigger will be fed a cleaned version of the document with only its text (note that this functionality is only available for some content types; if the raw text cannot be extracted, the program will be provided the equivalent of `raw`).
 
 An example scope definition might be as follows:
 
@@ -109,6 +113,19 @@ Finally, if we want to define a threshold in which `A` _must_ match _and_ either
 ```
 
 Threshold composition is very powerful!
+
+#### Response
+
+The **response** defines the type of data that the IEQL query will return. It must have two keys: `type` and `include`.
+
+**`type`** is either `full` or `partial`. `full` indicates that each match of the IEQL query should be its own IEQL response, and no MapReduce-style operations should be performed on it. (In order words, it should be piped directly into the database.) `partial` indicates that the IEQL query should return an IEQL partial response, which can then be aggregated.
+
+**`include`** specifies the information that should be included in the IEQL response. It is an array of strings. The following includes are supported:
+
+* `excerpt` (full only)
+* `url` (full only)
+* `domain`
+* `mime`
 
 ## Philosophy
 
