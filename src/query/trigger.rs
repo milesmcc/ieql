@@ -2,11 +2,13 @@ use common::pattern::{Pattern, CompiledPattern, PatternMatch};
 use common::compilation::CompilableTo;
 use common::validation::Issue;
 
+#[derive(Clone)]
 pub struct Trigger {
     pattern: Pattern,
     id: String,
 }
 
+#[derive(Clone)]
 pub struct CompiledTrigger {
     pattern: CompiledPattern,
     id: String,

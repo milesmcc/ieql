@@ -2,20 +2,24 @@ use common::validation::{Validatable, Issue};
 use regex;
 use common::compilation::CompilableTo;
 
+#[derive(Clone)]
 pub struct Pattern {
     content: String,
     kind: PatternKind,
 }
 
+#[derive(Clone)]
 pub struct PatternMatch {
     excerpt: String,
     relevant: (usize, usize),
 }
 
+#[derive(Clone)]
 pub struct CompiledPattern {
     regex: regex::Regex
 }
 
+#[derive(Copy, Clone)]
 pub enum PatternKind {
     RegEx,
     Raw

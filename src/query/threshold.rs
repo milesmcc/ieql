@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 use common::validation::Issue;
 
+#[derive(Clone)]
 pub struct Threshold {
     considers: Vec<Consideration>, // todo: make this a reference
     requires: usize,
     inverse: bool,
 }
 
+#[derive(Clone)]
 pub enum Consideration {
     Trigger(String),
     NestedThreshold(Threshold),

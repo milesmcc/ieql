@@ -2,11 +2,13 @@ use common::pattern::{CompiledPattern, Pattern};
 use common::compilation::CompilableTo;
 use common::validation::Issue;
 
+#[derive(Clone)]
 pub struct Scope {
     documents: Pattern,
     content: ScopeContent
 }
 
+#[derive(Clone)]
 pub struct CompiledScope {
     documents: CompiledPattern,
     content: ScopeContent
