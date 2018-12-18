@@ -1,9 +1,9 @@
 #[macro_use]
 extern crate serde_derive;
+extern crate serde;
 
 extern crate regex;
-extern crate serde;
-extern crate serde_json;
+extern crate ron;
 
 pub mod common;
 pub mod query;

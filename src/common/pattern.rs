@@ -4,14 +4,14 @@ use common::compilation::CompilableTo;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Pattern {
-    content: String,
-    kind: PatternKind,
+    pub content: String,
+    pub kind: PatternKind,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct PatternMatch {
-    excerpt: String,
-    relevant: (usize, usize),
+    pub excerpt: String,
+    pub relevant: (usize, usize),
 }
 
 #[derive(Clone)]

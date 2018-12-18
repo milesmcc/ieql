@@ -2,8 +2,8 @@ use common::validation::{Issue, Validatable};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Response {
-    kind: ResponseKind,
-    include: Vec<ResponseItem>,
+    pub kind: ResponseKind,
+    pub include: Vec<ResponseItem>,
 }
 
 #[derive(PartialEq, Debug, Copy, Clone, Serialize, Deserialize)]

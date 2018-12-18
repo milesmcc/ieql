@@ -3,13 +3,13 @@ use common::validation::Issue;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Threshold {
-    considers: Vec<Consideration>, // todo: make this a reference
-    requires: usize,
-    inverse: bool,
+    pub considers: Vec<ThresholdConsideration>, // todo: make this a reference
+    pub requires: usize,
+    pub inverse: bool
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub enum Consideration {
+pub enum ThresholdConsideration {
     Trigger(String),
     NestedThreshold(Threshold),
 }
@@ -20,11 +20,11 @@ impl Threshold {
         
         for consideration in &self.considers {
             if match consideration {
-                Consideration::Trigger(id) => match triggers.get(id) {
+                ThresholdConsideration::Trigger(id) => match triggers.get(id) {
                     Some(res) => *res,
                     None => return Err(Issue::Error(format!("unable to find trigger `{}` in given triggers", id)))
                 },
-                Consideration::NestedThreshold(threshold) => match threshold.evaluate(triggers) {
+                ThresholdConsideration::NestedThreshold(threshold) => match threshold.evaluate(triggers) {
                     Ok(res) => res,
                     Err(issue) => return Err(issue)
                 }

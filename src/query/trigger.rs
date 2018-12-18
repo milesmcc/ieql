@@ -4,8 +4,8 @@ use common::validation::Issue;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Trigger {
-    pattern: Pattern,
-    id: String,
+    pub pattern: Pattern,
+    pub id: String,
 }
 
 #[derive(Clone)]

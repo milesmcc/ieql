@@ -4,13 +4,13 @@ use common::validation::Issue;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Scope {
-    documents: Pattern,
-    content: ScopeContent
+    pub pattern: Pattern,
+    pub content: ScopeContent
 }
 
 #[derive(Clone)]
 pub struct CompiledScope {
-    documents: CompiledPattern,
+    pattern: CompiledPattern,
     content: ScopeContent
 }
 
@@ -22,9 +22,9 @@ pub enum ScopeContent {
 
 impl CompilableTo<CompiledScope> for Scope {
     fn compile(&self) -> Result<CompiledScope, Issue> {
-        match self.documents.compile() {
+        match self.pattern.compile() {
             Ok(compiled_pattern) => Ok(CompiledScope {
-                documents: compiled_pattern,
+                pattern: compiled_pattern,
                 content: self.content,
             }),
             Err(issue) => Err(issue)
