@@ -2,7 +2,7 @@ use common::pattern::{CompiledPattern, Pattern};
 use common::compilation::CompilableTo;
 use common::validation::Issue;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct Scope {
     pub pattern: Pattern,
     pub content: ScopeContent
@@ -14,7 +14,7 @@ pub struct CompiledScope {
     content: ScopeContent
 }
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Copy, Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub enum ScopeContent {
     Raw,
     Text

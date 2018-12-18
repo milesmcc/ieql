@@ -1,18 +1,18 @@
 use common::validation::{Issue, Validatable};
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct Response {
     pub kind: ResponseKind,
     pub include: Vec<ResponseItem>,
 }
 
-#[derive(PartialEq, Debug, Copy, Clone, Serialize, Deserialize)]
+#[derive(Copy, Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub enum ResponseKind {
     Full,
     Partial,
 }
 
-#[derive(PartialEq, Debug, Copy, Clone, Serialize, Deserialize)]
+#[derive(Copy, Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub enum ResponseItem {
     Excerpt,
     Url,

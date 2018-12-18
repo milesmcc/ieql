@@ -6,7 +6,7 @@ use query::trigger::{Trigger, CompiledTrigger};
 use common::compilation::CompilableTo;
 use common::validation::{Issue, Validatable};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Query {
     pub response: Response,
     pub scope: Scope,
@@ -86,9 +86,8 @@ mod tests {
 
     use ron;
 
-    #[test]
-    fn check_basic_serialization(){
-        let basic_query = Query {
+    fn get_basic_query() -> Query {
+        Query {
             response: Response {
                 kind: ResponseKind::Full,
                 include: vec![ResponseItem::Excerpt, ResponseItem::Url],
@@ -131,8 +130,18 @@ mod tests {
                 id: String::from("C"),
             }],
             id: Some(String::from("Test Trigger #1")),
-        };
-        let serialized_object_ron = ron::ser::to_string_pretty(&basic_query, ron::ser::PrettyConfig::default()).unwrap();
-        println!("RON -> {}", serialized_object_ron);
+        }
+    }
+
+    #[test]
+    fn test_basic_serialization(){
+        let serialized_object_ron = ron::ser::to_string(&get_basic_query()).unwrap();
+        assert_eq!(serialized_object_ron, "(response:(kind:Full,include:[Excerpt,Url,],),scope:(pattern:(content:\".+\",kind:RegEx,),content:Raw,),threshold:(considers:[Trigger(\"A\"),NestedThreshold((considers:[Trigger(\"B\"),Trigger(\"C\"),],requires:1,inverse:false,)),],requires:2,inverse:false,),triggers:[(pattern:(content:\"hello\",kind:RegEx,),id:\"A\",),(pattern:(content:\"everyone\",kind:RegEx,),id:\"B\",),(pattern:(content:\"around\",kind:RegEx,),id:\"C\",),],id:Some(\"Test Trigger #1\"),)")
+    }
+
+    #[test]
+    fn test_basic_deserialization(){
+        let basic_query: Query = ron::de::from_str("(response:(kind:Full,include:[Excerpt,Url,],),scope:(pattern:(content:\".+\",kind:RegEx,),content:Raw,),threshold:(considers:[Trigger(\"A\"),NestedThreshold((considers:[Trigger(\"B\"),Trigger(\"C\"),],requires:1,inverse:false,)),],requires:2,inverse:false,),triggers:[(pattern:(content:\"hello\",kind:RegEx,),id:\"A\",),(pattern:(content:\"everyone\",kind:RegEx,),id:\"B\",),(pattern:(content:\"around\",kind:RegEx,),id:\"C\",),],id:Some(\"Test Trigger #1\"),)").unwrap();
+        assert_eq!(get_basic_query(), basic_query);
     }
 }

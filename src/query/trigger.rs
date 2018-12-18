@@ -2,7 +2,7 @@ use common::pattern::{Pattern, CompiledPattern, PatternMatch};
 use common::compilation::CompilableTo;
 use common::validation::Issue;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct Trigger {
     pub pattern: Pattern,
     pub id: String,
