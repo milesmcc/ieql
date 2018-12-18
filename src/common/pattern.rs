@@ -2,13 +2,13 @@ use common::validation::{Validatable, Issue};
 use regex;
 use common::compilation::CompilableTo;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Pattern {
     content: String,
     kind: PatternKind,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct PatternMatch {
     excerpt: String,
     relevant: (usize, usize),
@@ -19,7 +19,7 @@ pub struct CompiledPattern {
     regex: regex::Regex
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum PatternKind {
     RegEx,
     Raw

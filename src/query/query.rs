@@ -6,6 +6,7 @@ use query::trigger::{Trigger, CompiledTrigger};
 use common::compilation::CompilableTo;
 use common::validation::{Issue, Validatable};
 
+#[derive(Serialize, Deserialize)]
 pub struct Query {
     response: Response,
     scope: Scope,
