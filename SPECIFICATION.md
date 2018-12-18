@@ -213,6 +213,12 @@ Query (
 )
 ```
 
+Minified, this query would look like this:
+
+```ron
+(response:(kind:Full,include:[Excerpt,Url,],),scope:(pattern:(content:".+",kind:RegEx,),content:Raw,),threshold:(considers:[Trigger("A"),NestedThreshold((considers:[Trigger("B"),Trigger("C"),],requires:1,inverse:false,)),],requires:2,inverse:false,),triggers:[(pattern:(content:"hello",kind:RegEx,),id:"A",),(pattern:(content:"everyone",kind:RegEx,),id:"B",),(pattern:(content:"around",kind:RegEx,),id:"C",),],id:Some("Test Trigger #1"),)
+```
+
 ## Philosophy
 
 As you implement or compose IEQL queries, keep the following in mind:
