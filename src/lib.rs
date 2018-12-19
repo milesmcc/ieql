@@ -7,6 +7,8 @@ extern crate ron;
 
 pub mod common;
 pub mod query;
+pub mod output;
+pub mod scan;
 
 #[cfg(test)]
 mod tests {
