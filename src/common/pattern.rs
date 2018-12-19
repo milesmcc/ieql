@@ -25,6 +25,16 @@ pub enum PatternKind {
     Raw
 }
 
+impl Pattern {
+    // Returns the pattern as regex 
+    pub fn get_as_safe_regex(&self) -> String {
+        match self.kind {
+            PatternKind::RegEx => self.content.clone(),
+            PatternKind::Raw => regex::escape(self.content.as_str())
+        }
+    }
+}
+
 impl CompilableTo<CompiledPattern> for Pattern {
     fn compile(&self) -> Result<CompiledPattern, Issue> {
         let regex_pattern = match self.kind {
