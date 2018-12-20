@@ -22,18 +22,18 @@ pub struct QueryGroup {
 }
 
 pub struct CompiledQuery {
-    response: Response,
-    scope: CompiledScope,
-    threshold: Threshold,
-    triggers: Vec<CompiledTrigger>,
-    id: Option<String>,
+    pub response: Response,
+    pub scope: CompiledScope,
+    pub threshold: Threshold,
+    pub triggers: Vec<CompiledTrigger>,
+    pub id: Option<String>,
 }
 
 pub struct CompiledQueryGroup {
-    queries: Vec<CompiledQuery>,
-    regex_collected: RegexSet,
-    regex_collected_query_index: Vec<usize>,
-    always_run_queries: Vec<CompiledQuery>, // for unoptimizable queries
+    pub queries: Vec<CompiledQuery>,
+    pub regex_collected: RegexSet,
+    pub regex_collected_query_index: Vec<usize>,
+    pub always_run_queries: Vec<CompiledQuery>, // for unoptimizable queries
 }
 
 impl CompilableTo<CompiledQuery> for Query {
