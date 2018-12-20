@@ -10,8 +10,8 @@ pub struct Trigger {
 
 #[derive(Clone)]
 pub struct CompiledTrigger {
-    pattern: CompiledPattern,
-    id: String,
+    pub pattern: CompiledPattern,
+    pub id: String,
 }
 
 impl CompilableTo<CompiledTrigger> for Trigger {
