@@ -15,7 +15,7 @@ pub enum ThresholdConsideration {
 }
 
 impl Threshold {
-    fn evaluate(&self, triggers: &HashMap<String, bool>) -> Result<bool, Issue> {
+    pub fn evaluate(&self, triggers: &HashMap<&String, bool>) -> Result<bool, Issue> {
         let mut matched = 0;
         
         for consideration in &self.considers {
