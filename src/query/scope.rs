@@ -10,8 +10,8 @@ pub struct Scope {
 
 #[derive(Clone)]
 pub struct CompiledScope {
-    pattern: CompiledPattern,
-    content: ScopeContent
+    pub pattern: CompiledPattern,
+    pub content: ScopeContent
 }
 
 #[derive(Copy, Clone, Serialize, Deserialize, Debug, PartialEq)]
