@@ -12,7 +12,7 @@ pub struct Output {
 
 pub enum OutputKind {
     Full,
-    Partial
+    Partial,
 }
 
 pub enum OutputItem {
@@ -23,44 +23,63 @@ pub enum OutputItem {
 }
 
 pub struct OutputBatch {
-    pub outputs: Vec<Output>
+    pub outputs: Vec<Output>,
 }
 
 impl From<Vec<Output>> for OutputBatch {
     fn from(outputs: Vec<Output>) -> OutputBatch {
-        OutputBatch {
-            outputs: outputs
-        }
+        OutputBatch { outputs: outputs }
     }
 }
 
 fn string_clone_helper(to_clone: &Option<String>) -> Option<String> {
     match to_clone {
         Some(value) => Some(value.clone()),
-        None => None
+        None => None,
     }
 }
 
-pub fn assemble(document: &Document, query: &CompiledQuery, matches: Vec<PatternMatch>, id: Option<String>) -> Output {
-    // warning: expensive!
-    let kind = match query.response.kind {
-        ResponseKind::Full => OutputKind::Full,
-        ResponseKind::Partial => OutputKind::Partial,
-    };
-    let query_id = string_clone_helper(&query.id);
-    let mut items: Vec<OutputItem> = Vec::new();
-    for item in &query.response.include {
-        match item {
-            ResponseItem::Domain => items.push(OutputItem::Domain(document.domain())),
-            ResponseItem::Mime => items.push(OutputItem::Mime(string_clone_helper(&document.mime))),
-            ResponseItem::Url => items.push(OutputItem::Domain(string_clone_helper(&document.url))),
-            ResponseItem::Excerpt => items.push(OutputItem::Excerpt(matches.clone()))
+impl Output {
+    pub fn new(
+        document: &Document,
+        query: &CompiledQuery,
+        matches: Vec<PatternMatch>,
+        id: Option<String>,
+    ) -> Output {
+        // warning: expensive!
+        let kind = match query.response.kind {
+            ResponseKind::Full => OutputKind::Full,
+            ResponseKind::Partial => OutputKind::Partial,
+        };
+        let query_id = string_clone_helper(&query.id);
+        let mut items: Vec<OutputItem> = Vec::new();
+        for item in &query.response.include {
+            match item {
+                ResponseItem::Domain => items.push(OutputItem::Domain(document.domain())),
+                ResponseItem::Mime => {
+                    items.push(OutputItem::Mime(string_clone_helper(&document.mime)))
+                }
+                ResponseItem::Url => {
+                    items.push(OutputItem::Domain(string_clone_helper(&document.url)))
+                }
+                ResponseItem::Excerpt => items.push(OutputItem::Excerpt(matches.clone())),
+            }
+        }
+        Output {
+            items: items,
+            kind: kind,
+            id: id,
+            query_id: query_id,
         }
     }
-    Output {
-        items: items,
-        kind: kind,
-        id: id,
-        query_id: query_id
+}
+
+impl OutputBatch {
+    pub fn merge_with(&mut self, other: OutputBatch) {
+        self.outputs.extend(other.outputs);
+    }
+
+    pub fn new() -> OutputBatch {
+        OutputBatch::from(vec![])
     }
 }
