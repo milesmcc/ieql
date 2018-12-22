@@ -1,5 +1,5 @@
 use query::response::Response;
-use query::scope::{CompiledScope, Scope};
+use query::scope::{CompiledScope, Scope, ScopeContent};
 use query::threshold::{Threshold, ThresholdConsideration};
 use query::trigger::{CompiledTrigger, Trigger};
 
@@ -34,6 +34,7 @@ pub struct CompiledQueryGroup {
     pub regex_collected: RegexSet,
     pub regex_collected_query_index: Vec<usize>,
     pub always_run_queries: Vec<CompiledQuery>, // for unoptimizable queries
+    pub regex_feed: ScopeContent
 }
 
 impl CompilableTo<CompiledQuery> for Query {
@@ -64,6 +65,8 @@ impl CompilableTo<CompiledQuery> for Query {
 
 impl CompilableTo<CompiledQueryGroup> for QueryGroup {
     fn compile(&self) -> Result<CompiledQueryGroup, Issue> {
+        let OPTIMIZE_FOR_SCOPE_CONTENT = ScopeContent::Raw;
+
         let mut queries: Vec<CompiledQuery> = Vec::new();
         let mut sub_regexes: Vec<String> = Vec::new();
         let mut sub_regexes_index: Vec<usize> = Vec::new();
@@ -99,8 +102,8 @@ impl CompilableTo<CompiledQueryGroup> for QueryGroup {
                 Ok(compiled_query) => compiled_query,
                 Err(issue) => return Err(issue), // kill early; compilation is expensive!
             };
-            let (relevant_trigger_ids, is_always) = recursively_analyze_threshold(&query.threshold);
-            if is_always {
+            let (relevant_trigger_ids, is_inverse) = recursively_analyze_threshold(&query.threshold);
+            if is_inverse || (query.scope.content != OPTIMIZE_FOR_SCOPE_CONTENT) {
                 always_runs.push(compiled_query);
             } else {
                 let query_index = queries.len();
@@ -124,7 +127,8 @@ impl CompilableTo<CompiledQueryGroup> for QueryGroup {
             queries: queries,
             regex_collected: regex_set,
             regex_collected_query_index: sub_regexes_index,
-            always_run_queries: always_runs
+            always_run_queries: always_runs,
+            regex_feed: OPTIMIZE_FOR_SCOPE_CONTENT
         })
     }
 }
