@@ -8,6 +8,8 @@ use common::validation::{Issue, Validatable};
 
 use regex::{Regex, RegexSet};
 
+use std::collections::HashMap;
+
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Query {
     pub response: Response,
@@ -151,6 +153,19 @@ impl Validatable for Query {
             None => (),
         }
 
+        // Check threshold validity
+        let mut trigger_responses: HashMap<&String, bool> = HashMap::new();
+        for trigger in &self.triggers {
+            trigger_responses.insert(&trigger.id, false);
+        }
+        match self.threshold.evaluate(&trigger_responses) {
+            Ok(value) => {
+                if value == true {
+                    issues.push(Issue::Warning(String::from("query will match if all triggers do not match; this can be dangerous in certain situations")));
+                }
+            },
+            Err(issue) => issues.push(issue),
+        };
         if issues.len() > 0 {
             return Some(issues);
         } else {

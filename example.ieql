@@ -25,7 +25,7 @@ Query (
                 inverse: false,
             )),
         ],
-        requires: 2,
+        requires: 1,
         inverse: false,
     ),
     triggers: [
