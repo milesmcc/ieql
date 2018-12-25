@@ -219,6 +219,10 @@ Minified, this query would look like this:
 (response:(kind:Full,include:[Excerpt,Url,],),scope:(pattern:(content:".+",kind:RegEx,),content:Raw,),threshold:(considers:[Trigger("A"),NestedThreshold((considers:[Trigger("B"),Trigger("C"),],requires:1,inverse:false,)),],requires:2,inverse:false,),triggers:[(pattern:(content:"hello",kind:RegEx,),id:"A",),(pattern:(content:"everyone",kind:RegEx,),id:"B",),(pattern:(content:"around",kind:RegEx,),id:"C",),],id:Some("Test Trigger #1"),)
 ```
 
+#### Filetype
+
+IEQL queries typically end with the file extension `.ieql`. Using query files that _do not_ end in `.ieql` will likely generate a warning by the IEQL interpreter.
+
 ## Philosophy
 
 As you implement or compose IEQL queries, keep the following in mind:
