@@ -15,6 +15,7 @@ pub enum OutputKind {
     Partial,
 }
 
+#[derive(Debug)]
 pub enum OutputItem {
     Url(Option<String>),
     Mime(Option<String>),
@@ -60,7 +61,7 @@ impl Output {
                     items.push(OutputItem::Mime(string_clone_helper(&document.mime)))
                 }
                 ResponseItem::Url => {
-                    items.push(OutputItem::Domain(string_clone_helper(&document.url)))
+                    items.push(OutputItem::Url(string_clone_helper(&document.url)))
                 }
                 ResponseItem::Excerpt => items.push(OutputItem::Excerpt(matches.clone())),
             }
@@ -83,3 +84,24 @@ impl OutputBatch {
         OutputBatch::from(vec![])
     }
 }
+
+impl std::fmt::Display for Output {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let id = match &self.id {
+            Some(value) => format!("[{}]", value),
+            None => String::from(""),
+        };
+        let kind = match self.kind {
+            OutputKind::Full => "full response",
+            OutputKind::Partial => "partial response",
+        };
+        let query_id = match &self.query_id {
+            Some(value) => format!(" from `{}`", value),
+            None => String::from(""),
+        };
+        let mut items: Vec<String> = Vec::new();
+        for item in &self.items {
+            items.push(format!("{:?}", item));
+        }
+        write!(f, "{} {}{}: {:?}", id, kind, query_id, items)
+    }}
