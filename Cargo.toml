@@ -7,6 +7,7 @@ license = "GPL-3.0"
 keywords = ["ieql", "query", "internet"]
 categories = ["command-line-utilities", "filesystem"]
 repository = "https://github.com/milesmcc/ieql"
+description = "An open standard and implementation for monitoring Internet content"
 
 [dependencies]
 regex = "1.1.0"
