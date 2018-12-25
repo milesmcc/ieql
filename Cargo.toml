@@ -1,7 +1,12 @@
 [package]
 name = "ieql"
 version = "0.1.0"
-authors = ["Miles McCain <0@rmrm.io>"]
+authors = ["R. Miles McCain <ieql@sendmiles.email>"]
+readme = "README.md"
+license = "GPL-3.0"
+keywords = ["ieql", "query", "internet"]
+categories = ["command-line-utilities", "filesystem"]
+repository = "https://github.com/milesmcc/ieql"
 
 [dependencies]
 regex = "1.1.0"
