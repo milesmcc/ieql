@@ -4,6 +4,8 @@ Query (
         include: [
             Excerpt,
             Url,
+            Domain,
+            Mime,
         ],
     ),
     scope: (
