@@ -13,7 +13,7 @@ Query (
             content: ".+",
             kind: RegEx,
         ),
-        content: Raw,
+        content: Text,
     ),
     threshold: (
         considers: [
