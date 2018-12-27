@@ -155,20 +155,20 @@ fn run_scan(matches: &clap::ArgMatches) {
                         continue;
                     }
                 }
-                let raw = match binary {
-                    true => String::from_utf8_lossy(contents.as_slice()).into_owned(),
-                    false => match String::from_utf8(contents) {
-                        Ok(value) => value,
-                        Err(error) => {
-                            error!("unable to read `{}` (`{}`), skipping...", file_path, error);
-                            continue;
-                        }
-                    },
+                let document = Document {
+                    data: contents,
+                    mime: None,
+                    url: Some(String::from(file_path))
                 };
-                let document: Document = Document::new(Some(String::from(file_path)), raw, None);
                 documents.push(document);
             }
-            let document_batch = DocumentBatch::from(documents);
+            let document_batch = match DocumentBatch::from(documents).compile() {
+                Ok(value) => value,
+                Err(error) => {
+                    error!("unable to compile document batch: `{}`", error);
+                    return;
+                }
+            };
             debug!("performing scan...");
             let output_batch = compiled_query.scan_batch(&document_batch);
             info!("received {} output(s)", output_batch.outputs.len());

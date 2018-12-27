@@ -1,26 +1,57 @@
-use url::Url;
-use std::collections::HashMap;
 use query::scope::{CompiledScope, ScopeContent};
+use scraper::Html;
+use std::collections::HashMap;
+use url::Url;
+use common::compilation::CompilableTo;
+use common::validation::Issue;
 
 pub struct Document {
     pub url: Option<String>,
+    pub data: Vec<u8>,
+    pub mime: Option<String>,
+}
+
+pub struct CompiledDocument {
+    pub url: Option<String>,
     pub raw: String,
     pub mime: Option<String>,
-    cache: HashMap<String, String>,
+    pub text: String,
+    pub domain: Option<String>,
 }
 
 pub struct DocumentBatch {
     pub documents: Vec<Document>,
 }
 
+pub struct CompiledDocumentBatch {
+    pub documents: Vec<CompiledDocument>,
+}
+
+enum DocumentKind {
+    Html,
+    Unknown
+}
+
 impl Document {
-    pub fn new(url: Option<String>, raw: String, mime: Option<String>) -> Document {
-        Document {
-            url: url,
-            raw: raw,
-            mime: mime,
-            cache: HashMap::new(),
+    fn detect_document_kind(&self) -> DocumentKind {
+        // Detect HTML
+        let mut is_html = match &self.mime {
+            Some(value) => value.eq("text/html"),
+            None => false,
+        };
+        match &self.url {
+            Some(value) => {
+                if value.ends_with(".html") {
+                    is_html = true;
+                }
+            }
+            None => (),
+        };
+        if is_html {
+            return DocumentKind::Html;
         }
+
+        DocumentKind::Unknown
     }
 
     // Same as host, but `domain` is more understandable and common
@@ -39,14 +70,59 @@ impl Document {
         }
     }
 
-    pub fn text(&self) -> &String {
-        unimplemented!();
+    fn raw(&self) -> String {
+        String::from_utf8_lossy(self.data.as_slice()).into_owned()
     }
 
+    fn extract_document_text(&self) -> String {
+        match &self.detect_document_kind() {
+            DocumentKind::Html => {
+                let document = Html::parse_fragment(self.raw().as_str());
+                let words = document.root_element().text().collect::<Vec<_>>();
+                let text = words.join(" ");
+                text
+            }
+            DocumentKind::Unknown => self.raw(),
+        }
+    }
+}
+
+impl CompilableTo<CompiledDocument> for Document {
+    fn compile(&self) -> Result<CompiledDocument, Issue> {
+        let text = self.extract_document_text();
+        let domain = self.domain();
+        let raw = self.raw();
+        Ok(CompiledDocument {
+            url: self.url.clone(),
+            raw: raw,
+            mime: self.mime.clone(),
+            text: text,
+            domain: domain
+        })
+    }
+}
+
+impl CompilableTo<CompiledDocumentBatch> for DocumentBatch {
+    fn compile(&self) -> Result<CompiledDocumentBatch, Issue> {
+        let mut compiled_documents: Vec<CompiledDocument> = Vec::new();
+        for document in &self.documents {
+            let compiled_document = match document.compile() {
+                Ok(value) => value,
+                Err(error) => return Err(error),
+            };
+            compiled_documents.push(compiled_document);
+        }
+        Ok(CompiledDocumentBatch {
+            documents: compiled_documents
+        })
+    }
+}
+
+impl CompiledDocument {
     pub fn content(&self, content: ScopeContent) -> &String {
         match content {
             ScopeContent::Raw => &self.raw,
-            ScopeContent::Text => self.text(),
+            ScopeContent::Text => &self.text,
         }
     }
 }

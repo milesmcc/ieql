@@ -1,5 +1,5 @@
 use common::pattern::PatternMatch;
-use input::document::Document;
+use input::document::CompiledDocument;
 use query::query::CompiledQuery;
 use query::response::{ResponseItem, ResponseKind};
 
@@ -42,7 +42,7 @@ fn string_clone_helper(to_clone: &Option<String>) -> Option<String> {
 
 impl Output {
     pub fn new(
-        document: &Document,
+        document: &CompiledDocument,
         query: &CompiledQuery,
         matches: Vec<PatternMatch>,
         id: Option<String>,
@@ -56,7 +56,7 @@ impl Output {
         let mut items: Vec<OutputItem> = Vec::new();
         for item in &query.response.include {
             match item {
-                ResponseItem::Domain => items.push(OutputItem::Domain(document.domain())),
+                ResponseItem::Domain => items.push(OutputItem::Domain((&document.domain).clone())),
                 ResponseItem::Mime => {
                     items.push(OutputItem::Mime(string_clone_helper(&document.mime)))
                 }
