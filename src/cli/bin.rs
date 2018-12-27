@@ -10,8 +10,9 @@ extern crate walkdir;
 use ieql::common::compilation::CompilableTo;
 use ieql::common::validation::{Issue, Validatable};
 use ieql::input::document::{Document, DocumentBatch};
-use ieql::query::query::Query;
+use ieql::query::query::{Query, QueryGroup};
 use ieql::scan::scanner::Scanner;
+use std::fs::DirEntry;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
@@ -46,7 +47,7 @@ fn main() {
                 .about("Scan documents using an IEQL query")
                 .arg(
                     Arg::with_name("query")
-                        .help("the path to the query")
+                        .help("the path to the query, or a directory which contains multiple queries")
                         .required(true)
                         .index(1),
                 )
@@ -58,7 +59,7 @@ fn main() {
                         .min_values(1),
                 )
                 .arg_from_usage("-m, --multithreading 'Scan using multiple CPU threads'")
-                .arg_from_usage("-R, --recursive 'Enter directories recursively'")
+                .arg_from_usage("-R, --recursive 'Enter directories recursively'"),
         )
         .get_matches();
     run(matches);
@@ -70,6 +71,48 @@ fn run(matches: clap::ArgMatches) {
         ("scan", Some(m)) => run_scan(m),
         _ => error!("no valid command specified; try running with `--help`."),
     }
+}
+
+fn get_queries_from_file(file: String) -> QueryGroup {
+    let path = Path::new(&file);
+    let mut queries: Vec<Query> = Vec::new();
+    if path.is_dir() {
+        for entry in WalkDir::new(path).follow_links(true).into_iter() {
+            match entry {
+                Ok(file) => {
+                    if file.path().is_dir() {
+                        continue;
+                    }
+                    let subpath: &Path = file.path();
+                    let query = match get_query_from_file(subpath.to_string_lossy().into_owned()) {
+                        Ok(value) => value,
+                        Err(error) => {
+                            warn!(
+                                "unable to load query `{}` (`{}`), skipping...",
+                                file.path().to_string_lossy(),
+                                error
+                            );
+                            continue;
+                        }
+                    };
+                    queries.push(query);
+                }
+                Err(error) => {
+                    warn!("unable to handle nested query `{}`, skipping...", error);
+                    continue;
+                }
+            }
+        }
+    } else {
+        queries.push(match get_query_from_file(file.clone()) {
+            Ok(value) => value,
+            Err(error) => {
+                error!("unable to load query `{}` (`{}`), skipping...", file, error);
+                return QueryGroup { queries: vec![] };
+            }
+        });
+    }
+    QueryGroup { queries: queries }
 }
 
 fn run_validate(matches: &clap::ArgMatches) {
@@ -106,23 +149,14 @@ fn run_validate(matches: &clap::ArgMatches) {
 fn run_scan(matches: &clap::ArgMatches) {
     let query_path = matches.value_of("query").unwrap();
     let file_paths: Vec<&str> = matches.values_of("inputs").unwrap().collect();
-    let query = match get_query_from_file(String::from(query_path)) {
-        Ok(value) => value,
-        Err(error) => {
-            error!(
-                "encountered a critical error while trying to load query: {}",
-                error
-            );
-            return;
-        }
-    };
-    let compiled_query = match query.compile() {
+    let queries = get_queries_from_file(String::from(query_path));
+    let compiled_queries = match queries.compile() {
         Ok(value) => {
-            debug!("query compiled successfully");
+            debug!("queries compiled successfully");
             value
         }
         Err(error) => {
-            error!("unable to compile query: `{}`", error);
+            error!("unable to compile queries: `{}`", error);
             return;
         }
     };
@@ -144,22 +178,29 @@ fn run_scan(matches: &clap::ArgMatches) {
                                 continue;
                             }
                             files_to_scan.push(Box::from(file.path()));
-                        },
+                        }
                         Err(error) => {
                             warn!("unable to handle nested file `{}`, skipping...", error);
                             continue;
                         }
                     }
                 }
-            }else{
-                warn!("file `{}` is a directory, but recursion is not enabled; skipping...", file_path);
+            } else {
+                warn!(
+                    "file `{}` is a directory, but recursion is not enabled; skipping...",
+                    file_path
+                );
                 continue;
             }
-        }else{
+        } else {
             files_to_scan.push(Box::from(path));
         }
     }
-    info!("scanning {} files...", files_to_scan.len());
+    info!(
+        "scanning {} files with {} queries...",
+        files_to_scan.len(),
+        queries.queries.len()
+    );
     match multithreaded {
         true => {
             error!("multithreading is not yet supported!");
@@ -175,22 +216,30 @@ fn run_scan(matches: &clap::ArgMatches) {
                 let mut f: File = match File::open(&file_path) {
                     Ok(value) => value,
                     Err(error) => {
-                        error!("unable to open `{}` (`{}`), skipping...", file_path.to_string_lossy(), error);
+                        error!(
+                            "unable to open `{}` (`{}`), skipping...",
+                            file_path.to_string_lossy(),
+                            error
+                        );
                         continue;
                     }
                 };
                 let mut contents: Vec<u8> = Vec::new();
                 match f.read_to_end(&mut contents) {
-                    Ok(size) => {},
+                    Ok(size) => {}
                     Err(error) => {
-                        error!("unable to read `{}` (`{}`), skipping...", file_path.to_string_lossy(), error);
+                        error!(
+                            "unable to read `{}` (`{}`), skipping...",
+                            file_path.to_string_lossy(),
+                            error
+                        );
                         continue;
                     }
                 }
                 let document = Document {
                     data: contents,
                     mime: None,
-                    url: Some(String::from(file_path.to_string_lossy()))
+                    url: Some(String::from(file_path.to_string_lossy())),
                 };
                 documents.push(document);
             }
@@ -202,7 +251,7 @@ fn run_scan(matches: &clap::ArgMatches) {
                 }
             };
             debug!("performing scan...");
-            let output_batch = compiled_query.scan_batch(&document_batch);
+            let output_batch = compiled_queries.scan_batch(&document_batch);
             info!("received {} output(s)", output_batch.outputs.len());
             for output in output_batch.outputs {
                 info!("  - {}", output);
