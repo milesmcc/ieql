@@ -180,8 +180,6 @@ fn run_scan(matches: &clap::ArgMatches) {
 }
 
 fn get_query_from_file(path: String) -> Result<Query, Issue> {
-    info!("loading query file `{}`", path);
-
     if !path.ends_with(".ieql") {
         warn!("path does not end with `.ieql`")
     }
