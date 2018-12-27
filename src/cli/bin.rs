@@ -5,6 +5,7 @@ extern crate clap;
 extern crate log;
 extern crate ron;
 extern crate simplelog;
+extern crate walkdir;
 
 use ieql::common::compilation::CompilableTo;
 use ieql::common::validation::{Issue, Validatable};
@@ -14,6 +15,7 @@ use ieql::scan::scanner::Scanner;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
+use walkdir::WalkDir;
 
 use clap::{App, Arg, SubCommand};
 
@@ -56,7 +58,7 @@ fn main() {
                         .min_values(1),
                 )
                 .arg_from_usage("-m, --multithreading 'Scan using multiple CPU threads'")
-                .arg_from_usage("-b, --binary 'Allow for binary files to be loaded'"),
+                .arg_from_usage("-R, --recursive 'Enter directories recursively'")
         )
         .get_matches();
     run(matches);
@@ -125,13 +127,42 @@ fn run_scan(matches: &clap::ArgMatches) {
         }
     };
     let multithreaded = matches.is_present("multithreading");
-    let binary = matches.is_present("binary");
-    if binary {
-        warn!("binary files will be loaded; this may cause issues for some broad raw queries!");
+    let recursive = matches.is_present("recursive");
+    let mut files_to_scan: Vec<Box<Path>> = Vec::new();
+    for file_path in file_paths {
+        let path = Path::new(file_path);
+        if !path.exists() {
+            warn!("unable to find file `{}`, skipping...", file_path);
+            continue;
+        }
+        if path.is_dir() {
+            if recursive {
+                for entry in WalkDir::new(path).follow_links(true).into_iter() {
+                    match entry {
+                        Ok(file) => {
+                            if file.path().is_dir() {
+                                continue;
+                            }
+                            files_to_scan.push(Box::from(file.path()));
+                        },
+                        Err(error) => {
+                            warn!("unable to handle nested file `{}`, skipping...", error);
+                            continue;
+                        }
+                    }
+                }
+            }else{
+                warn!("file `{}` is a directory, but recursion is not enabled; skipping...", file_path);
+                continue;
+            }
+        }else{
+            files_to_scan.push(Box::from(path));
+        }
     }
+    info!("scanning {} files...", files_to_scan.len());
     match multithreaded {
         true => {
-            error!("multi-threaded scanning is not yet supported!");
+            error!("multithreading is not yet supported!");
             unimplemented!();
         }
         false => {
@@ -139,11 +170,12 @@ fn run_scan(matches: &clap::ArgMatches) {
             warn!("single-threaded scans load all files into memory before performing the scan");
             warn!("for a more performant alternative, run with `--multithreading`");
             let mut documents: Vec<Document> = Vec::new();
-            for file_path in file_paths {
-                let mut f: File = match File::open(file_path) {
+            for file_path_box in files_to_scan {
+                let file_path = Box::leak(file_path_box);
+                let mut f: File = match File::open(&file_path) {
                     Ok(value) => value,
                     Err(error) => {
-                        error!("unable to open `{}` (`{}`), skipping...", file_path, error);
+                        error!("unable to open `{}` (`{}`), skipping...", file_path.to_string_lossy(), error);
                         continue;
                     }
                 };
@@ -151,14 +183,14 @@ fn run_scan(matches: &clap::ArgMatches) {
                 match f.read_to_end(&mut contents) {
                     Ok(size) => {},
                     Err(error) => {
-                        error!("unable to read `{}` (`{}`), skipping...", file_path, error);
+                        error!("unable to read `{}` (`{}`), skipping...", file_path.to_string_lossy(), error);
                         continue;
                     }
                 }
                 let document = Document {
                     data: contents,
                     mime: None,
-                    url: Some(String::from(file_path))
+                    url: Some(String::from(file_path.to_string_lossy()))
                 };
                 documents.push(document);
             }

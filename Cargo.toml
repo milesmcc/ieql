@@ -19,6 +19,7 @@ clap = "2.32"
 simplelog = "0.5"
 log = "0.4"
 scraper = "0.9.0"
+walkdir = "2"
 
 [[bin]]
 name = "ieql"
