@@ -4,6 +4,7 @@ extern crate serde;
 extern crate regex;
 extern crate ron;
 extern crate url;
+extern crate scraper;
 
 pub mod common;
 pub mod query;
