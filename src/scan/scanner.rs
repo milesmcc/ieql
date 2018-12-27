@@ -1,16 +1,16 @@
 use common::pattern::PatternMatch;
-use input::document::{Document, DocumentBatch};
+use input::document::{CompiledDocument, CompiledDocumentBatch};
 use output::output::{Output, OutputBatch};
 use query::query::{CompiledQuery, CompiledQueryGroup};
 use std::collections::{HashMap, HashSet};
 
 pub trait Scanner {
-    fn scan_batch(&self, documents: &DocumentBatch) -> OutputBatch;
-    fn scan_single(&self, document: &Document) -> OutputBatch;
+    fn scan_batch(&self, documents: &CompiledDocumentBatch) -> OutputBatch;
+    fn scan_single(&self, document: &CompiledDocument) -> OutputBatch;
 }
 
 impl Scanner for CompiledQuery {
-    fn scan_single(&self, document: &Document) -> OutputBatch {
+    fn scan_single(&self, document: &CompiledDocument) -> OutputBatch {
         let placeholder_string_no_url = String::from("");
         let url = match &document.url {
             Some(value) => &value,
@@ -42,7 +42,7 @@ impl Scanner for CompiledQuery {
         }
     }
 
-    fn scan_batch(&self, documents: &DocumentBatch) -> OutputBatch {
+    fn scan_batch(&self, documents: &CompiledDocumentBatch) -> OutputBatch {
         let mut outputs: Vec<Output> = Vec::new();
         for document in &documents.documents {
             let output_batch = self.scan_single(document);
@@ -53,7 +53,7 @@ impl Scanner for CompiledQuery {
 }
 
 impl Scanner for CompiledQueryGroup {
-    fn scan_single(&self, document: &Document) -> OutputBatch {
+    fn scan_single(&self, document: &CompiledDocument) -> OutputBatch {
         let mut output_batch = OutputBatch::new();
 
         // Regex Set evaluation
@@ -82,7 +82,7 @@ impl Scanner for CompiledQueryGroup {
         output_batch
     }
 
-    fn scan_batch(&self, documents: &DocumentBatch) -> OutputBatch {
+    fn scan_batch(&self, documents: &CompiledDocumentBatch) -> OutputBatch {
         let mut output_batch = OutputBatch::from(vec![]);
         for document in &documents.documents {
             output_batch.merge_with(self.scan_single(document));
