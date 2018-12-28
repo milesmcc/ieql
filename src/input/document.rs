@@ -11,6 +11,16 @@ pub struct Document {
     pub mime: Option<String>,
 }
 
+pub enum DocumentReference {
+    Populated(Document),
+    Unpopulated(String) // the path
+}
+
+pub struct DocumentReferenceBatch {
+    pub documents: Vec<DocumentReference>
+}
+
+
 pub struct CompiledDocument {
     pub url: Option<String>,
     pub raw: String,
@@ -108,7 +118,7 @@ impl CompilableTo<CompiledDocumentBatch> for DocumentBatch {
         for document in &self.documents {
             let compiled_document = match document.compile() {
                 Ok(value) => value,
-                Err(error) => return Err(error),
+                Err(error) => continue, // silent failure
             };
             compiled_documents.push(compiled_document);
         }
@@ -130,5 +140,11 @@ impl CompiledDocument {
 impl From<Vec<Document>> for DocumentBatch {
     fn from(docs: Vec<Document>) -> DocumentBatch {
         DocumentBatch { documents: docs }
+    }
+}
+
+impl From<Vec<DocumentReference>> for DocumentReferenceBatch {
+    fn from(docs: Vec<DocumentReference>) -> DocumentReferenceBatch {
+        DocumentReferenceBatch { documents: docs }
     }
 }

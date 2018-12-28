@@ -1,9 +1,10 @@
 use common::pattern::PatternMatch;
-use input::document::{CompiledDocument, CompiledDocumentBatch, DocumentBatch};
+use input::document::{CompiledDocument, CompiledDocumentBatch, DocumentBatch, DocumentReferenceBatch, DocumentReference, Document};
 use output::output::{Output, OutputBatch};
 use query::query::{CompiledQuery, CompiledQueryGroup};
 use std::collections::{HashMap, HashSet};
 use common::compilation::CompilableTo;
+use common::retrieve::load_document;
 
 use std::sync::mpsc;
 use std::thread;
@@ -13,7 +14,7 @@ pub trait Scanner: Clone + Send {
     fn scan_single(&self, document: &CompiledDocument) -> OutputBatch;
     fn scan_concurrently(
         &self,
-        batches: mpsc::Receiver<DocumentBatch>,
+        batches: mpsc::Receiver<DocumentReferenceBatch>,
         threads: u8,
     ) -> mpsc::Receiver<OutputBatch>;
 }
@@ -62,7 +63,7 @@ impl Scanner for CompiledQuery {
 
     fn scan_concurrently(
         &self,
-        batches: mpsc::Receiver<DocumentBatch>,
+        batches: mpsc::Receiver<DocumentReferenceBatch>,
         threads: u8,
     ) -> mpsc::Receiver<OutputBatch> {
         let query_group = CompiledQueryGroup::from(self.clone());
@@ -110,7 +111,7 @@ impl Scanner for CompiledQueryGroup {
 
     fn scan_concurrently(
         &self,
-        batches: mpsc::Receiver<DocumentBatch>,
+        batches: mpsc::Receiver<DocumentReferenceBatch>,
         threads: u8,
     ) -> mpsc::Receiver<OutputBatch> {
         let (ultimate_transmitter, ultimate_receiver) = mpsc::channel::<OutputBatch>();
@@ -118,12 +119,12 @@ impl Scanner for CompiledQueryGroup {
         thread::spawn(move || {
             let (tx_requests, rx_requests) = mpsc::channel::<thread::ThreadId>();
             let mut handles: Vec<thread::JoinHandle<_>> = Vec::new();
-            let mut outgoing: HashMap<thread::ThreadId, mpsc::Sender<DocumentBatch>> =
+            let mut outgoing: HashMap<thread::ThreadId, mpsc::Sender<DocumentReferenceBatch>> =
                 HashMap::new();
 
             // create threads
             for _ in 0..threads {
-                let (tx_inputs, rx_inputs) = mpsc::channel::<DocumentBatch>();
+                let (tx_inputs, rx_inputs) = mpsc::channel::<DocumentReferenceBatch>();
                 let tx_request_documents = tx_requests.clone();
                 let tx_send_output = ultimate_transmitter.clone();
                 let supercloned_self = cloned_self.clone(); // TODO: optimize
@@ -138,9 +139,22 @@ impl Scanner for CompiledQueryGroup {
                             Ok(values) => values,
                             Err(_) => break, // no more values; end the thread
                         };
-                        let compiled_batch = match batch.compile() {
+                        let mut documents: Vec<Document> = Vec::new();
+                        for document_reference in batch.documents {
+                            documents.push(match document_reference {
+                                DocumentReference::Populated(document) => document,
+                                DocumentReference::Unpopulated(path) => {
+                                    match load_document(&path) {
+                                        Ok(document) => document,
+                                        Err(issue) => continue, // silent failure
+                                    }
+                                }
+                            });
+                        }
+                        let populated_batch = DocumentBatch::from(documents);
+                        let compiled_batch = match populated_batch.compile() {
                             Ok(value) => value,
-                            Err(_) => break, // silent failure; TODO: fix
+                            Err(_) => continue, // silent failure; TODO: fix
                         };
                         let outputs = supercloned_self.scan_batch(&compiled_batch);
                         match tx_send_output.send(outputs) {
