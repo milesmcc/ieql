@@ -23,6 +23,7 @@ pub struct QueryGroup {
     pub queries: Vec<Query>,
 }
 
+#[derive(Clone)]
 pub struct CompiledQuery {
     pub response: Response,
     pub scope: CompiledScope,
@@ -31,6 +32,7 @@ pub struct CompiledQuery {
     pub id: Option<String>,
 }
 
+#[derive(Clone)]
 pub struct CompiledQueryGroup {
     pub queries: Vec<CompiledQuery>,
     pub regex_collected: RegexSet,
@@ -132,6 +134,18 @@ impl CompilableTo<CompiledQueryGroup> for QueryGroup {
             always_run_queries: always_runs,
             regex_feed: OPTIMIZE_FOR_SCOPE_CONTENT
         })
+    }
+}
+
+impl From<CompiledQuery> for CompiledQueryGroup { // CompiledQueryGroup can represent a single query
+    fn from(query: CompiledQuery) -> CompiledQueryGroup {
+        CompiledQueryGroup { // it will always be faster to just run the query than to perform optimizations designed with multiple queries in mind
+            queries: vec![],
+            regex_collected: RegexSet::new(vec![""]).unwrap(),
+            regex_collected_query_index: vec![],
+            always_run_queries: vec![query], // for unoptimizable queries
+            regex_feed: ScopeContent::Raw,
+        }
     }
 }
 

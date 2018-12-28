@@ -9,7 +9,8 @@ extern crate walkdir;
 
 use ieql::common::compilation::CompilableTo;
 use ieql::common::validation::{Issue, Validatable};
-use ieql::input::document::{Document, DocumentBatch};
+use ieql::input::document::{CompiledDocument, CompiledDocumentBatch, Document, DocumentBatch};
+use ieql::output::output::OutputBatch;
 use ieql::query::query::{Query, QueryGroup};
 use ieql::scan::scanner::Scanner;
 use std::fs::DirEntry;
@@ -17,6 +18,8 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 use walkdir::WalkDir;
+
+use std::sync::mpsc;
 
 use clap::{App, Arg, SubCommand};
 
@@ -47,7 +50,9 @@ fn main() {
                 .about("Scan documents using an IEQL query")
                 .arg(
                     Arg::with_name("query")
-                        .help("the path to the query, or a directory which contains multiple queries")
+                        .help(
+                            "the path to the query, or a directory which contains multiple queries",
+                        )
                         .required(true)
                         .index(1),
                 )
@@ -146,7 +151,39 @@ fn run_validate(matches: &clap::ArgMatches) {
     }
 }
 
+fn load_document_from_file(file_path: &Path) -> Option<Document> {
+    let mut f: File = match File::open(&file_path) {
+        Ok(value) => value,
+        Err(error) => {
+            error!(
+                "unable to open `{}` (`{}`), skipping...",
+                file_path.to_string_lossy(),
+                error
+            );
+            return None;
+        }
+    };
+    let mut contents: Vec<u8> = Vec::new();
+    match f.read_to_end(&mut contents) {
+        Ok(size) => {}
+        Err(error) => {
+            error!(
+                "unable to read `{}` (`{}`), skipping...",
+                file_path.to_string_lossy(),
+                error
+            );
+            return None;
+        }
+    }
+    Some(Document {
+        data: contents,
+        mime: None,
+        url: Some(String::from(file_path.to_string_lossy())),
+    })
+}
+
 fn run_scan(matches: &clap::ArgMatches) {
+    // Load queries
     let query_path = matches.value_of("query").unwrap();
     let file_paths: Vec<&str> = matches.values_of("inputs").unwrap().collect();
     let queries = get_queries_from_file(String::from(query_path));
@@ -201,10 +238,61 @@ fn run_scan(matches: &clap::ArgMatches) {
         files_to_scan.len(),
         queries.queries.len()
     );
+
+    // perform scan; note a caveat: loading files is _single threaded_
     match multithreaded {
         true => {
-            error!("multithreading is not yet supported!");
-            unimplemented!();
+            let batch_size = 64;
+            let (tx_batches, rx_batches) = mpsc::channel::<DocumentBatch>();
+            let rx_outputs = compiled_queries.scan_concurrently(rx_batches, 8);
+
+            let mut current_documents: Vec<Document> = Vec::new();
+            for file_path_box in files_to_scan {
+                let file_path = Box::leak(file_path_box);
+                let document = match load_document_from_file(file_path) {
+                    Some(value) => value,
+                    None => continue,
+                };
+                current_documents.push(document);
+                let num_documents = current_documents.len();
+                if num_documents >= batch_size {
+                    // time to push a batch
+                    let mut drain: Vec<Document> = Vec::new();
+                    drain.extend(current_documents.drain(batch_size..));
+                    let batch = DocumentBatch::from(drain);
+                    match tx_batches.send(batch) {
+                        Ok(_) => {
+                            debug!("sending new batch of {} documents", num_documents);
+                        }
+                        Err(_) => {
+                            error!("unable to transmit batch to scan engine; shutting down...");
+                            break;
+                        }
+                    };
+                    current_documents = Vec::new();
+                }
+            }
+            if current_documents.len() != 0 {
+                // send all other documents
+                let batch = DocumentBatch::from(current_documents);
+                match tx_batches.send(batch) {
+                    Ok(_) => {
+                        debug!("sending final batch");
+                    }
+                    Err(_) => {
+                        error!("unable to transmit batch to scan engine; shutting down...");
+                    }
+                };
+            }
+            drop(tx_batches);
+            let mut output_batch = OutputBatch::new();
+            for batch in rx_outputs {
+                output_batch.merge_with(batch);
+            }
+            info!("received {} output(s)", output_batch.outputs.len());
+            for output in output_batch.outputs {
+                info!("  - {}", output);
+            }
         }
         false => {
             info!("performing single-threaded scan...");
@@ -213,35 +301,13 @@ fn run_scan(matches: &clap::ArgMatches) {
             let mut documents: Vec<Document> = Vec::new();
             for file_path_box in files_to_scan {
                 let file_path = Box::leak(file_path_box);
-                let mut f: File = match File::open(&file_path) {
-                    Ok(value) => value,
-                    Err(error) => {
-                        error!(
-                            "unable to open `{}` (`{}`), skipping...",
-                            file_path.to_string_lossy(),
-                            error
-                        );
-                        continue;
-                    }
-                };
-                let mut contents: Vec<u8> = Vec::new();
-                match f.read_to_end(&mut contents) {
-                    Ok(size) => {}
-                    Err(error) => {
-                        error!(
-                            "unable to read `{}` (`{}`), skipping...",
-                            file_path.to_string_lossy(),
-                            error
-                        );
-                        continue;
+                match load_document_from_file(file_path) {
+                    Some(document) => documents.push(document),
+                    None => {
+                        error!("unable to process `{}`...", file_path.to_string_lossy());
+                        continue; // not strictly necessary but the verbosity is good
                     }
                 }
-                let document = Document {
-                    data: contents,
-                    mime: None,
-                    url: Some(String::from(file_path.to_string_lossy())),
-                };
-                documents.push(document);
             }
             let document_batch = match DocumentBatch::from(documents).compile() {
                 Ok(value) => value,

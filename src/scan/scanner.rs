@@ -1,12 +1,21 @@
 use common::pattern::PatternMatch;
-use input::document::{CompiledDocument, CompiledDocumentBatch};
+use input::document::{CompiledDocument, CompiledDocumentBatch, DocumentBatch};
 use output::output::{Output, OutputBatch};
 use query::query::{CompiledQuery, CompiledQueryGroup};
 use std::collections::{HashMap, HashSet};
+use common::compilation::CompilableTo;
 
-pub trait Scanner {
+use std::sync::mpsc;
+use std::thread;
+
+pub trait Scanner: Clone + Send {
     fn scan_batch(&self, documents: &CompiledDocumentBatch) -> OutputBatch;
     fn scan_single(&self, document: &CompiledDocument) -> OutputBatch;
+    fn scan_concurrently(
+        &self,
+        batches: mpsc::Receiver<DocumentBatch>,
+        threads: u8,
+    ) -> mpsc::Receiver<OutputBatch>;
 }
 
 impl Scanner for CompiledQuery {
@@ -17,7 +26,7 @@ impl Scanner for CompiledQuery {
             None => &placeholder_string_no_url, // potentially undefined behavior; TODO: document
         };
         if !(&self.scope.pattern.quick_check(url)) {
-            return OutputBatch::from(vec![]); // scope doesn't match
+            return OutputBatch::from(vec![]); // scope doesn't match; TODO: optimize this so that this function is only called in the first place on things that match
         }
         let input = document.content(self.scope.content);
         let mut matches: HashMap<&String, bool> = HashMap::new();
@@ -49,6 +58,15 @@ impl Scanner for CompiledQuery {
             outputs.extend(output_batch.outputs);
         }
         OutputBatch::from(outputs)
+    }
+
+    fn scan_concurrently(
+        &self,
+        batches: mpsc::Receiver<DocumentBatch>,
+        threads: u8,
+    ) -> mpsc::Receiver<OutputBatch> {
+        let query_group = CompiledQueryGroup::from(self.clone());
+        query_group.scan_concurrently(batches, threads)
     }
 }
 
@@ -88,5 +106,74 @@ impl Scanner for CompiledQueryGroup {
             output_batch.merge_with(self.scan_single(document));
         }
         output_batch
+    }
+
+    fn scan_concurrently(
+        &self,
+        batches: mpsc::Receiver<DocumentBatch>,
+        threads: u8,
+    ) -> mpsc::Receiver<OutputBatch> {
+        let (ultimate_transmitter, ultimate_receiver) = mpsc::channel::<OutputBatch>();
+        let cloned_self = self.clone();
+        thread::spawn(move || {
+            let (tx_requests, rx_requests) = mpsc::channel::<thread::ThreadId>();
+            let mut handles: Vec<thread::JoinHandle<_>> = Vec::new();
+            let mut outgoing: HashMap<thread::ThreadId, mpsc::Sender<DocumentBatch>> =
+                HashMap::new();
+
+            // create threads
+            for _ in 0..threads {
+                let (tx_inputs, rx_inputs) = mpsc::channel::<DocumentBatch>();
+                let tx_request_documents = tx_requests.clone();
+                let tx_send_output = ultimate_transmitter.clone();
+                let supercloned_self = cloned_self.clone(); // TODO: optimize
+                let handle = thread::spawn(move || {
+                    let id = thread::current().id();
+                    loop {
+                        match tx_request_documents.send(id) {
+                            Ok(_) => (),
+                            Err(_) => break,
+                        };
+                        let batch = match rx_inputs.recv() {
+                            Ok(values) => values,
+                            Err(_) => break, // no more values; end the thread
+                        };
+                        let compiled_batch = match batch.compile() {
+                            Ok(value) => value,
+                            Err(_) => break, // silent failure; TODO: fix
+                        };
+                        let outputs = supercloned_self.scan_batch(&compiled_batch);
+                        match tx_send_output.send(outputs) {
+                            Ok(_) => (),
+                            Err(_) => break, // receiver has been killed; thread is done
+                        };
+                    }
+                });
+                outgoing.insert(handle.thread().id(), tx_inputs);
+                handles.push(handle);
+            }
+
+            // listen and coordinate threads
+            // TODO: figure out how to deal with these silent failures
+            loop {
+                let request = match rx_requests.recv() {
+                    Ok(request) => request,
+                    Err(error) => {
+                        break; // silent failure
+                    }
+                };
+                let batch_to_send = match batches.recv() {
+                    Ok(batch) => batch,
+                    Err(_) => break, // we're done; transmitter dropped
+                };
+                match outgoing.get(&request) {
+                    Some(channel) => {
+                        channel.send(batch_to_send);
+                    }
+                    None => break, // silent failure
+                }
+            }
+        });
+        ultimate_receiver
     }
 }

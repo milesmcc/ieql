@@ -2,7 +2,6 @@ Query (
     response: (
         kind: Full,
         include: [
-            Excerpt,
             Url,
             Domain,
             Mime,
