@@ -89,7 +89,10 @@ impl Document {
             DocumentKind::Html => {
                 let document = Html::parse_fragment(self.raw().as_str());
                 let words = document.root_element().text().collect::<Vec<_>>();
-                let text = words.join(" ");
+                let mut text: String = words.join(" ");
+                while text.contains("  ") { // Remove double spaces
+                    text = text.replace("  ", " ");
+                }
                 text
             }
             DocumentKind::Unknown => self.raw(),

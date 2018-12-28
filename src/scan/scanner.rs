@@ -114,6 +114,7 @@ impl Scanner for CompiledQueryGroup {
         batches: mpsc::Receiver<DocumentReferenceBatch>,
         threads: u8,
     ) -> mpsc::Receiver<OutputBatch> {
+        // println!("scanning concurrently");
         let (ultimate_transmitter, ultimate_receiver) = mpsc::channel::<OutputBatch>();
         let cloned_self = self.clone();
         thread::spawn(move || {
@@ -139,14 +140,20 @@ impl Scanner for CompiledQueryGroup {
                             Ok(values) => values,
                             Err(_) => break, // no more values; end the thread
                         };
+                        // println!("found batch of {} document on {:?}", batch.documents.len(), id);
                         let mut documents: Vec<Document> = Vec::new();
                         for document_reference in batch.documents {
                             documents.push(match document_reference {
                                 DocumentReference::Populated(document) => document,
                                 DocumentReference::Unpopulated(path) => {
                                     match load_document(&path) {
-                                        Ok(document) => document,
-                                        Err(issue) => continue, // silent failure
+                                        Ok(document) => {
+                                            document
+                                        },
+                                        Err(issue) => {
+                                            // println!("{}", issue);
+                                            continue;
+                                        }, // silent failure
                                     }
                                 }
                             });
@@ -157,11 +164,13 @@ impl Scanner for CompiledQueryGroup {
                             Err(_) => continue, // silent failure; TODO: fix
                         };
                         let outputs = supercloned_self.scan_batch(&compiled_batch);
+                        // println!("sending {} outputs...", outputs.outputs.len());
                         match tx_send_output.send(outputs) {
                             Ok(_) => (),
                             Err(_) => break, // receiver has been killed; thread is done
                         };
                     }
+                    drop(tx_send_output);
                 });
                 outgoing.insert(handle.thread().id(), tx_inputs);
                 handles.push(handle);
@@ -172,20 +181,29 @@ impl Scanner for CompiledQueryGroup {
             loop {
                 let request = match rx_requests.recv() {
                     Ok(request) => request,
-                    Err(error) => {
-                        break; // silent failure
-                    }
+                    Err(error) => break,
                 };
                 let batch_to_send = match batches.recv() {
                     Ok(batch) => batch,
-                    Err(_) => break, // we're done; transmitter dropped
+                    Err(_) => {
+                        drop(rx_requests);
+                        break;
+                    }, // we're done; transmitter dropped
                 };
                 match outgoing.get(&request) {
                     Some(channel) => {
-                        channel.send(batch_to_send);
+                        match channel.send(batch_to_send) {
+                            Ok(_) => (),
+                            Err(_) => continue // silent failure
+                        };
                     }
                     None => break, // silent failure
                 }
+            }
+
+            // Thread clean-up
+            for outgoing_sender in outgoing.values() {
+                drop(outgoing_sender);
             }
         });
         ultimate_receiver

@@ -231,18 +231,18 @@ fn run_scan(matches: &clap::ArgMatches) {
                 if num_documents >= batch_size {
                     // time to push a batch
                     let mut drain: Vec<DocumentReference> = Vec::new();
-                    drain.extend(current_documents.drain(batch_size..));
+                    drain.extend(current_documents.drain(0..batch_size));
+                    let len = drain.len();
                     let batch = DocumentReferenceBatch::from(drain);
                     match tx_batches.send(batch) {
                         Ok(_) => {
-                            debug!("sending new batch of {} documents", num_documents);
+                            debug!("sending new batch of {} documents", len);
                         }
                         Err(_) => {
                             error!("unable to transmit batch to scan engine; shutting down...");
                             break;
                         }
                     };
-                    current_documents = Vec::new();
                 }
             }
             if current_documents.len() != 0 {
@@ -259,12 +259,15 @@ fn run_scan(matches: &clap::ArgMatches) {
             }
             drop(tx_batches);
             let mut output_batch = OutputBatch::new();
-            for batch in rx_outputs {
-                output_batch.merge_with(batch);
+            loop {
+                match rx_outputs.recv() {
+                    Ok(value) => output_batch.merge_with(value),
+                    Err(_) => break,
+                }
             }
             info!("received {} output(s)", output_batch.outputs.len());
             for output in output_batch.outputs {
-                info!("  - {}", output);
+                // info!("  - {}", output);
             }
         }
         false => {
@@ -327,7 +330,7 @@ fn get_query_from_file(path: String) -> Result<Query, Issue> {
             )));
         }
     }
-    let mut query_str = match std::str::from_utf8(contents.as_slice()) {
+    let query_str = match std::str::from_utf8(contents.as_slice()) {
         Ok(value) => value,
         Err(error) => {
             return Err(Issue::Error(format!(
