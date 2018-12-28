@@ -1,0 +1,32 @@
+Query (
+    response: (
+        kind: Full,
+        include: [
+            Url
+        ],
+    ),
+    scope: (
+        pattern: (
+            content: ".+",
+            kind: RegEx,
+        ),
+        content: Text,
+    ),
+    threshold: (
+        considers: [
+            Trigger("name")
+        ],
+        requires: 1,
+        inverse: false,
+    ),
+    triggers: [
+        (
+            pattern: (
+                content: "Miles McCain",
+                kind: RegEx,
+            ),
+            id: "name",
+        )
+    ],
+    id: Some("name trigger"),
+)
