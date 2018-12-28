@@ -65,6 +65,7 @@ fn main() {
                         .min_values(1),
                 )
                 .arg_from_usage("-m, --multithreading 'Scan using multiple CPU threads'")
+                .arg_from_usage("-h, --hide-outputs 'Do not show outputs'")
                 .arg_from_usage("-R, --recursive 'Enter directories recursively'"),
         )
         .get_matches();
@@ -168,6 +169,7 @@ fn run_scan(matches: &clap::ArgMatches) {
         }
     };
     let multithreaded = matches.is_present("multithreading");
+    let hide_outputs = matches.is_present("hide-outputs");
     let recursive = matches.is_present("recursive");
     let mut files_to_scan: Vec<Box<Path>> = Vec::new();
     for file_path in file_paths {
@@ -261,14 +263,18 @@ fn run_scan(matches: &clap::ArgMatches) {
             let mut output_batch = OutputBatch::new();
             loop {
                 match rx_outputs.recv() {
-                    Ok(value) => output_batch.merge_with(value),
+                    Ok(value) => {
+                        if !hide_outputs {
+                            for output in &value.outputs {
+                                info!("  - {}", output);
+                            }
+                        }
+                        output_batch.merge_with(value);
+                    },
                     Err(_) => break,
                 }
             }
             info!("received {} output(s)", output_batch.outputs.len());
-            for output in output_batch.outputs {
-                // info!("  - {}", output);
-            }
         }
         false => {
             info!("performing single-threaded scan...");
