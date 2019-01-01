@@ -25,7 +25,7 @@ IEQL queries provide three main features:
 - **Speed** — IEQL queries can be _compiled_ so that they can scan millions of documents per second. They are _blazing fast_.
 - **Grouping** — You can combine thousands of IEQL queries together and scan using all of them at the same time without serious performance trade-offs.
 - **Openness** — IEQL is an open standard, which means that you can implement it however you'd like.
-- **Extensibility** — Because IEQL is built on top of JSON, it's extensible—and yet also backwards-compatible.
+- **Extensibility** — Because IEQL is built on top of RON, it's extensible—and yet also backwards-compatible.
 
 ### How can I use IEQL myself?
 
