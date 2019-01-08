@@ -1,3 +1,5 @@
+//! This file provides a utility class for loading files.
+
 use input::document::Document;
 use common::validation::Issue;
 use std::fs::DirEntry;
@@ -5,7 +7,13 @@ use std::fs::File;
 use std::path::Path;
 use std::io::Read;
 
-pub fn load_document(path: &String) -> Result<Document, Issue> { // TODO: make this work for more than just local file paths
+/// Loads the file at the given path and assembles a `Document`. This function
+/// is a utility. It currently only supports local files.
+/// 
+/// # Arguments
+/// * `path`: a `String` of the filepath to load
+pub fn load_document(path: &String) -> Result<Document, Issue> {
+    // TODO: make this work for more than just local file paths
     let file_path = Path::new(&path);
     let mut f: File = match File::open(&file_path) {
         Ok(value) => value,
