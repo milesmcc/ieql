@@ -22,7 +22,7 @@ Query (
                     Trigger("B"),
                     Trigger("C"),
                 ],
-                requires: 1,
+                requires: 2,
                 inverse: false,
             )),
         ],
