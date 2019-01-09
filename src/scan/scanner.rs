@@ -150,7 +150,7 @@ impl Scanner for CompiledQueryGroup {
                                         Ok(document) => {
                                             document
                                         },
-                                        Err(issue) => {
+                                        Err(_issue) => {
                                             // println!("{}", issue);
                                             continue;
                                         }, // silent failure
@@ -181,7 +181,7 @@ impl Scanner for CompiledQueryGroup {
             loop {
                 let request = match rx_requests.recv() {
                     Ok(request) => request,
-                    Err(error) => break,
+                    Err(_error) => break,
                 };
                 let batch_to_send = match batches.recv() {
                     Ok(batch) => batch,

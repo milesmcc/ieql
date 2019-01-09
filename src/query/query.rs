@@ -124,7 +124,7 @@ impl CompilableTo<CompiledQueryGroup> for QueryGroup {
 
         let regex_set = match RegexSet::new(sub_regexes) {
             Ok(set) => set,
-            Err(iss) => return Err(Issue::Error(String::from("unable to compile master regex set")))
+            Err(_iss) => return Err(Issue::Error(String::from("unable to compile master regex set")))
         };
 
         Ok(CompiledQueryGroup {
@@ -275,10 +275,10 @@ mod tests {
     #[test]
     fn test_group_compilation() {
         let mut queries: Vec<Query> = Vec::new();
-        for i in 0..20 {
+        for _i in 0..20 {
             queries.push(get_basic_query());
         }
-        let special_query = Query {
+        let _special_query = Query {
             response: Response {
                 kind: ResponseKind::Full,
                 include: vec![ResponseItem::Excerpt, ResponseItem::Url],

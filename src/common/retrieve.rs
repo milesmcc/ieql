@@ -27,7 +27,7 @@ pub fn load_document(path: &String) -> Result<Document, Issue> {
     };
     let mut contents: Vec<u8> = Vec::new();
     match f.read_to_end(&mut contents) {
-        Ok(size) => {}
+        Ok(_size) => {}
         Err(error) => {
             return Err(Issue::Error(format!(
                 "unable to read `{}` (`{}`), skipping...",
