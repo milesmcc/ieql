@@ -5,6 +5,7 @@ Query (
             Url,
             Domain,
             Mime,
+            Excerpt
         ],
     ),
     scope: (
