@@ -3,6 +3,7 @@ extern crate ieql;
 extern crate clap;
 #[macro_use]
 extern crate log;
+extern crate rand;
 extern crate ron;
 extern crate simplelog;
 extern crate walkdir;
@@ -10,14 +11,13 @@ extern crate walkdir;
 use ieql::common::compilation::CompilableTo;
 use ieql::common::retrieve::load_document;
 use ieql::common::validation::{Issue, Validatable};
-use ieql::input::document::{
-    CompiledDocument, CompiledDocumentBatch, Document, DocumentBatch, DocumentReference,
+use ieql::input::document::{Document, DocumentBatch, DocumentReference,
     DocumentReferenceBatch,
 };
 use ieql::output::output::OutputBatch;
 use ieql::query::query::{Query, QueryGroup};
 use ieql::scan::scanner::Scanner;
-use std::fs::DirEntry;
+use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
@@ -69,7 +69,9 @@ fn main() {
                 )
                 .arg_from_usage("-m, --multithreading 'Scan using multiple CPU threads'")
                 .arg_from_usage("-h, --hide-outputs 'Do not show outputs'")
-                .arg_from_usage("-R, --recursive 'Enter directories recursively'"),
+                .arg_from_usage("-R, --recursive 'Enter directories recursively'")
+                .arg_from_usage("-o, --output=<dir> 'Directory to place outputs")
+                .args_from_usage("-p, --pretty 'Pretty-print output files'"),
         )
         .get_matches();
     run(matches);
@@ -125,6 +127,51 @@ fn get_queries_from_file(file: String) -> QueryGroup {
     QueryGroup { queries: queries }
 }
 
+fn write_output_batch_to_file(
+    parent_directory: &str,
+    output_batch: &OutputBatch,
+    pretty: bool,
+) -> bool {
+    let dir_path = Path::new(&parent_directory);
+    if !dir_path.is_dir() {
+        error!(
+            "output location `{}` is not a directory",
+            dir_path.to_string_lossy()
+        );
+        return false;
+    }
+    for output in &output_batch.outputs {
+        let query_id = match &output.query_id {
+            Some(value) => value.clone(),
+            None => String::from("unknown_query"),
+        };
+        let output_filename = match &output.id {
+            Some(value) => format!("output-{}-{}.ieqlo", value, query_id),
+            None => format!("output-{}-{}.ieqlo", rand::random::<u32>(), query_id),
+        };
+        let file_path = dir_path.join(output_filename.clone());
+        let output_string = match match pretty {
+            // shhh... this is fine...
+            true => ron::ser::to_string_pretty(&output, ron::ser::PrettyConfig::default()),
+            false => ron::ser::to_string(&output),
+        } {
+            Ok(value) => value,
+            Err(error) => {
+                error!(
+                    "unable to serialize output `{}` (`{}`), skipping...",
+                    output_filename, error
+                );
+                continue;
+            }
+        };
+        match fs::write(file_path, output_string) {
+            Ok(_) => (),
+            Err(error) => error!("unable to write output `{}` (`{}`)", output_filename, error),
+        }
+    }
+    return true;
+}
+
 fn run_validate(matches: &clap::ArgMatches) {
     // Adapted partially from my own software, https://github.com/milesmcc/ArmorLib/blob/master/src/cli/bin.rs
 
@@ -174,6 +221,14 @@ fn run_scan(matches: &clap::ArgMatches) {
     let multithreaded = matches.is_present("multithreading");
     let hide_outputs = matches.is_present("hide-outputs");
     let recursive = matches.is_present("recursive");
+    let should_output = matches.is_present("output");
+    let output_dir = matches.value_of("output");
+    if should_output && output_dir == None {
+        error!("`-o` must specify an output directory");
+        return;
+    }
+    let output_dir = output_dir.unwrap();
+    let pretty_output = matches.is_present("pretty");
     let mut files_to_scan: Vec<Box<Path>> = Vec::new();
     for file_path in file_paths {
         let path = Path::new(file_path);
@@ -214,7 +269,6 @@ fn run_scan(matches: &clap::ArgMatches) {
         queries.queries.len()
     );
 
-    // perform scan; note a caveat: loading files is _single threaded_
     match multithreaded {
         true => {
             let batch_size = 64;
@@ -275,12 +329,21 @@ fn run_scan(matches: &clap::ArgMatches) {
                                 info!("  - {}", output);
                             }
                         }
+                        if should_output {
+                            write_output_batch_to_file(output_dir, &value, pretty_output);
+                        }
                         output_batch.merge_with(value);
                     }
                     Err(_) => break,
                 }
             }
-            info!("received {} output(s)", output_batch.outputs.len());
+            info!(
+                "finished scan and received {} output(s)",
+                output_batch.outputs.len()
+            );
+            if should_output {
+                info!("wrote outputs to `{}`", output_dir);
+            }
         }
         false => {
             info!("performing single-threaded scan...");
@@ -320,8 +383,14 @@ fn run_scan(matches: &clap::ArgMatches) {
             debug!("performing scan...");
             let output_batch = compiled_queries.scan_batch(&document_batch);
             info!("received {} output(s)", output_batch.outputs.len());
-            for output in output_batch.outputs {
-                info!("  - {}", output);
+            if !hide_outputs {
+                for output in &output_batch.outputs {
+                    info!("  - {}", output);
+                }
+            }
+            if should_output {
+                write_output_batch_to_file(output_dir, &output_batch, pretty_output);
+                info!("wrote outputs to `{}`", output_dir);
             }
         }
     }
