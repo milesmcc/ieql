@@ -2,7 +2,6 @@
 
 use input::document::Document;
 use common::validation::Issue;
-use std::fs::DirEntry;
 use std::fs::File;
 use std::path::Path;
 use std::io::Read;

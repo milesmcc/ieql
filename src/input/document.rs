@@ -2,9 +2,8 @@
 
 use common::compilation::CompilableTo;
 use common::validation::Issue;
-use query::scope::{CompiledScope, ScopeContent};
+use query::scope::ScopeContent;
 use scraper::Html;
-use std::collections::HashMap;
 use url::Url;
 
 /// The `Document` struct represents any kind of document, but typically

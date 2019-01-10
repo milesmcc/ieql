@@ -20,6 +20,7 @@ use query::response::{ResponseItem, ResponseKind};
 /// response, which they would then MapReduce.
 /// 
 /// There is not currently full support for partial IEQL outputs.
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Output {
     /// Contains the data relevant for the user; for example, excerpts of the match.
     pub items: Vec<OutputItem>,
@@ -39,6 +40,7 @@ pub struct Output {
 /// about each type of query, please see the specification.
 /// 
 /// **There is currently not full support for partial queries.**
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum OutputKind {
     Full,
     Partial,
@@ -50,7 +52,7 @@ pub enum OutputKind {
 /// 
 /// Much of this information is simply copied from the metadata of the document
 /// that produced it.
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum OutputItem {
     /// Represents the URL of the document that matched the query, if present.
     /// There is _no guarantee_ that this will be a valid url; if the mechanism
@@ -69,6 +71,7 @@ pub enum OutputItem {
 
 /// Represents a batch (collection) of outputs. This function tends to be
 /// helpful for multiprocessing, though it is somewhat infrequently used.
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct OutputBatch {
     /// Contains the outputs.
     pub outputs: Vec<Output>,

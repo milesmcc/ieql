@@ -8,7 +8,7 @@ use query::trigger::{CompiledTrigger, Trigger};
 use common::compilation::CompilableTo;
 use common::validation::{Issue, Validatable};
 
-use regex::{Regex, RegexSet};
+use regex::RegexSet;
 
 use std::collections::HashMap;
 
