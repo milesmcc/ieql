@@ -25,7 +25,7 @@ pub use query::response::{Response, ResponseItem, ResponseKind};
 pub use query::scope::{Scope, ScopeContent};
 pub use query::threshold::{Threshold, ThresholdConsideration};
 pub use query::trigger::Trigger;
-pub use query::query::{Query, QueryGroup}
+pub use query::query::{Query, QueryGroup};
 pub use output::output::Output;
 pub use scan::scanner::Scanner;
 pub use input::document::Document;
