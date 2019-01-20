@@ -1,14 +1,14 @@
 //! This file provides a utility class for loading files.
 
-use input::document::Document;
 use common::validation::Issue;
+use input::document::Document;
 use std::fs::File;
-use std::path::Path;
 use std::io::Read;
+use std::path::Path;
 
 /// Loads the file at the given path and assembles a `Document`. This function
 /// is a utility. It currently only supports local files.
-/// 
+///
 /// # Arguments
 /// * `path`: a `String` of the filepath to load
 pub fn load_document(path: &String) -> Result<Document, Issue> {
@@ -22,7 +22,7 @@ pub fn load_document(path: &String) -> Result<Document, Issue> {
                 file_path.to_string_lossy(),
                 error
             )));
-        },
+        }
     };
     let mut contents: Vec<u8> = Vec::new();
     match f.read_to_end(&mut contents) {
