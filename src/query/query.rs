@@ -55,6 +55,7 @@ pub struct Query {
 /// Represents a collection of queries. This type is useful in
 /// cases where many different queries are being compiled at
 /// once.
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct QueryGroup {
     pub queries: Vec<Query>,
 }
