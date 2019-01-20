@@ -1,3 +1,5 @@
+//! This file provides functionality related to scanning.
+
 use common::pattern::PatternMatch;
 use input::document::{CompiledDocument, CompiledDocumentBatch, DocumentBatch, DocumentReferenceBatch, DocumentReference, Document};
 use output::output::{Output, OutputBatch};
@@ -9,9 +11,21 @@ use common::retrieve::load_document;
 use std::sync::mpsc;
 use std::thread;
 
+/// This trait specifies basic scanning functionality.
 pub trait Scanner: Clone + Send {
+    /// Scan a batch of documents and return the output. This function
+    /// is **singlethreaded** and often not very performant.
     fn scan_batch(&self, documents: &CompiledDocumentBatch) -> OutputBatch;
+    /// Scan a single document and return the output.
     fn scan_single(&self, document: &CompiledDocument) -> OutputBatch;
+    /// Launch a 'scan engine' and create an asynchronous and concurrent
+    /// scanning system. In most cases, this is what you'll want to use.
+    /// 
+    /// To feed documents to the scanning engine, provide them through
+    /// the `mpsc::Receiver` (via your `mpsc::Sender`). Outputs will be
+    /// sent on the returned channel. The scan engine will automatically
+    /// shut down when every transmitter paired with the receiver is
+    /// dropped from memory.
     fn scan_concurrently(
         &self,
         batches: mpsc::Receiver<DocumentReferenceBatch>,
