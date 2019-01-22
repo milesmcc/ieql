@@ -1,6 +1,6 @@
 [package]
 name = "ieql"
-version = "0.1.4"
+version = "0.1.5"
 authors = ["R. Miles McCain <ieql@sendmiles.email>"]
 readme = "README.md"
 license = "GPL-3.0"
