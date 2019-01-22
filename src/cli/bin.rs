@@ -68,9 +68,10 @@ fn main() {
                         .min_values(1),
                 )
                 .arg_from_usage("-m, --multithreading 'Scan using multiple CPU threads'")
+                .arg_from_usage("-t, --threads=[# of threads] 'If multithreading, how many threads to use'")
                 .arg_from_usage("-h, --hide-outputs 'Do not show outputs'")
                 .arg_from_usage("-R, --recursive 'Enter directories recursively'")
-                .arg_from_usage("-o, --output=<dir> 'Directory to place outputs")
+                .arg_from_usage("-o, --output=[dir] 'Directory to place outputs")
                 .args_from_usage("-p, --pretty 'Pretty-print output files'"),
         )
         .get_matches();
@@ -219,15 +220,17 @@ fn run_scan(matches: &clap::ArgMatches) {
         }
     };
     let multithreaded = matches.is_present("multithreading");
+    let threads: u8 = match matches.value_of("threads").unwrap_or("8").parse() {
+        Ok(value) => value,
+        Err(error) => {
+            error!("invalid number of threads `{}` (`{}`), defaulting to 8...", matches.value_of("threads").unwrap(), error);
+            8
+        }
+    };
     let hide_outputs = matches.is_present("hide-outputs");
     let recursive = matches.is_present("recursive");
     let should_output = matches.is_present("output");
-    let output_dir = matches.value_of("output");
-    if should_output && output_dir == None {
-        error!("`-o` must specify an output directory");
-        return;
-    }
-    let output_dir = output_dir.unwrap();
+    let output_dir = matches.value_of("output").unwrap_or("/tmp/"); // will not be used unless `should_output` is true
     let pretty_output = matches.is_present("pretty");
     let mut files_to_scan: Vec<Box<Path>> = Vec::new();
     for file_path in file_paths {
@@ -273,8 +276,8 @@ fn run_scan(matches: &clap::ArgMatches) {
         true => {
             let batch_size = 64;
             let (tx_batches, rx_batches) = mpsc::channel::<DocumentReferenceBatch>();
-            let rx_outputs = compiled_queries.scan_concurrently(rx_batches, 16); // TODO: make variable
-
+            let rx_outputs = compiled_queries.scan_concurrently(rx_batches, threads);
+            info!("will perform scan using {} threads", threads);
             let mut current_documents: Vec<DocumentReference> = Vec::new();
             for file_path_box in files_to_scan {
                 let file_path = Box::leak(file_path_box);
