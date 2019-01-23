@@ -1,14 +1,18 @@
 //! This file provides functionality related to scanning.
 
+use common::compilation::CompilableTo;
 use common::pattern::PatternMatch;
-use input::document::{CompiledDocument, CompiledDocumentBatch, DocumentBatch, DocumentReferenceBatch, DocumentReference, Document};
+use common::retrieve::load_document;
+use input::document::{
+    CompiledDocument, CompiledDocumentBatch, Document, DocumentBatch, DocumentReference,
+    DocumentReferenceBatch,
+};
 use output::output::{Output, OutputBatch};
 use query::query::{CompiledQuery, CompiledQueryGroup};
 use std::collections::{HashMap, HashSet};
-use common::compilation::CompilableTo;
-use common::retrieve::load_document;
 
 use std::sync::mpsc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 
 /// This trait specifies basic scanning functionality.
@@ -20,17 +24,54 @@ pub trait Scanner: Clone + Send {
     fn scan_single(&self, document: &CompiledDocument) -> OutputBatch;
     /// Launch a 'scan engine' and create an asynchronous and concurrent
     /// scanning system. In most cases, this is what you'll want to use.
-    /// 
-    /// To feed documents to the scanning engine, provide them through
-    /// the `mpsc::Receiver` (via your `mpsc::Sender`). Outputs will be
-    /// sent on the returned channel. The scan engine will automatically
-    /// shut down when every transmitter paired with the receiver is
-    /// dropped from memory.
-    fn scan_concurrently(
-        &self,
-        batches: mpsc::Receiver<DocumentReferenceBatch>,
-        threads: u8,
-    ) -> mpsc::Receiver<OutputBatch>;
+    ///
+    /// For more information about how to interact with the scanning system
+    /// (sometimes referred to as the _scan engine_), please see the documentation
+    /// pertaining to `AsyncScanInterface`.
+    fn scan_concurrently(&self, threads: u8) -> AsyncScanInterface;
+}
+
+/// `AsyncScanInterface` provides a simple interface, free of channels
+/// and other complicated components, to communicate with the scan engine.
+pub struct AsyncScanInterface {
+    outgoing_batches: Option<mpsc::Sender<DocumentReferenceBatch>>,
+    incoming_outputs: mpsc::Receiver<OutputBatch>,
+    pending_processing: Arc<Mutex<usize>>,
+}
+
+impl AsyncScanInterface {
+    /// Process the given documents. Note that this will temporarily lock
+    /// the thread in order to increment the number of items processing.
+    pub fn process(&self, batch: DocumentReferenceBatch) -> Result<(), ()> {
+        match &self.outgoing_batches {
+            Some(value) => match value.send(batch) {
+                Ok(_) => {
+                    *self.pending_processing.lock().unwrap() += 1;
+                    Ok(())
+                }
+                Err(error) => Err(()),
+            },
+            None => Err(()),
+        }
+    }
+
+    /// Lock the current thread and wait for outputs.
+    pub fn lock_for_outputs(&self) -> Result<OutputBatch, mpsc::RecvError> {
+        self.incoming_outputs.recv()
+    }
+
+    /// Lock the current thread and determine the total number of batches
+    /// that are currently processing (i.e. the total size of the current
+    /// inter-thread queue).
+    pub fn batches_pending_processing(&self) -> usize {
+        self.pending_processing.lock().unwrap().clone() // unsafe?
+    }
+
+    /// Signal to the scan engine to shut down. Sending documents
+    /// will no longer be possible.
+    pub fn shutdown(&mut self) {
+        self.outgoing_batches = None;
+    }
 }
 
 impl Scanner for CompiledQuery {
@@ -75,13 +116,9 @@ impl Scanner for CompiledQuery {
         OutputBatch::from(outputs)
     }
 
-    fn scan_concurrently(
-        &self,
-        batches: mpsc::Receiver<DocumentReferenceBatch>,
-        threads: u8,
-    ) -> mpsc::Receiver<OutputBatch> {
+    fn scan_concurrently(&self, threads: u8) -> AsyncScanInterface {
         let query_group = CompiledQueryGroup::from(self.clone());
-        query_group.scan_concurrently(batches, threads)
+        query_group.scan_concurrently(threads)
     }
 }
 
@@ -123,14 +160,15 @@ impl Scanner for CompiledQueryGroup {
         output_batch
     }
 
-    fn scan_concurrently(
-        &self,
-        batches: mpsc::Receiver<DocumentReferenceBatch>,
-        threads: u8,
-    ) -> mpsc::Receiver<OutputBatch> {
+    fn scan_concurrently(&self, threads: u8) -> AsyncScanInterface {
+        let (incoming_transmitter, incoming_receiver) = mpsc::channel::<DocumentReferenceBatch>();
+        let pending_processing = Arc::new(Mutex::new(0));
+
         // println!("scanning concurrently");
         let (ultimate_transmitter, ultimate_receiver) = mpsc::channel::<OutputBatch>();
         let cloned_self = self.clone();
+        let pending_processing_cloned = pending_processing.clone();
+
         thread::spawn(move || {
             let (tx_requests, rx_requests) = mpsc::channel::<thread::ThreadId>();
             let mut handles: Vec<thread::JoinHandle<_>> = Vec::new();
@@ -161,13 +199,11 @@ impl Scanner for CompiledQueryGroup {
                                 DocumentReference::Populated(document) => document,
                                 DocumentReference::Unpopulated(path) => {
                                     match load_document(&path) {
-                                        Ok(document) => {
-                                            document
-                                        },
+                                        Ok(document) => document,
                                         Err(_issue) => {
                                             // println!("{}", issue);
                                             continue;
-                                        }, // silent failure
+                                        } // silent failure
                                     }
                                 }
                             });
@@ -197,22 +233,26 @@ impl Scanner for CompiledQueryGroup {
                     Ok(request) => request,
                     Err(_error) => break,
                 };
-                let batch_to_send = match batches.recv() {
-                    Ok(batch) => batch,
-                    Err(_) => {
+                let batch_to_send = match incoming_receiver.recv() {
+                    Ok(batch) => {
+                        *pending_processing_cloned.lock().unwrap() -= 1;
+                        batch
+                    }
+                    Err(error) => {
                         drop(rx_requests);
                         break;
-                    }, // we're done; transmitter dropped
+                    } // we're done; transmitter dropped
                 };
                 match outgoing.get(&request) {
                     Some(channel) => {
                         match channel.send(batch_to_send) {
                             Ok(_) => (),
-                            Err(_) => continue // silent failure
+                            Err(_) => continue, // silent failure
                         };
                     }
                     None => break, // silent failure
                 }
+                // decrement pending processing
             }
 
             // Thread clean-up
@@ -220,6 +260,10 @@ impl Scanner for CompiledQueryGroup {
                 drop(outgoing_sender);
             }
         });
-        ultimate_receiver
+        AsyncScanInterface {
+            incoming_outputs: ultimate_receiver,
+            outgoing_batches: Some(incoming_transmitter),
+            pending_processing: pending_processing,
+        }
     }
 }

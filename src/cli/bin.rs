@@ -16,7 +16,7 @@ use ieql::input::document::{Document, DocumentBatch, DocumentReference,
 };
 use ieql::output::output::OutputBatch;
 use ieql::query::query::{Query, QueryGroup};
-use ieql::scan::scanner::Scanner;
+use ieql::scan::scanner::{Scanner, AsyncScanInterface};
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
@@ -275,8 +275,7 @@ fn run_scan(matches: &clap::ArgMatches) {
     match multithreaded {
         true => {
             let batch_size = 64;
-            let (tx_batches, rx_batches) = mpsc::channel::<DocumentReferenceBatch>();
-            let rx_outputs = compiled_queries.scan_concurrently(rx_batches, threads);
+            let mut async_interface: AsyncScanInterface = compiled_queries.scan_concurrently(threads);
             info!("will perform scan using {} threads", threads);
             let mut current_documents: Vec<DocumentReference> = Vec::new();
             for file_path_box in files_to_scan {
@@ -299,7 +298,7 @@ fn run_scan(matches: &clap::ArgMatches) {
                     drain.extend(current_documents.drain(0..batch_size));
                     let len = drain.len();
                     let batch = DocumentReferenceBatch::from(drain);
-                    match tx_batches.send(batch) {
+                    match async_interface.process(batch) {
                         Ok(_) => {
                             debug!("sending new batch of {} documents", len);
                         }
@@ -313,7 +312,7 @@ fn run_scan(matches: &clap::ArgMatches) {
             if current_documents.len() != 0 {
                 // send all other documents
                 let batch = DocumentReferenceBatch::from(current_documents);
-                match tx_batches.send(batch) {
+                match async_interface.process(batch) {
                     Ok(_) => {
                         debug!("sending final batch");
                     }
@@ -322,10 +321,10 @@ fn run_scan(matches: &clap::ArgMatches) {
                     }
                 };
             }
-            drop(tx_batches);
             let mut output_batch = OutputBatch::new();
+            (&mut async_interface).shutdown();
             loop {
-                match rx_outputs.recv() {
+                match async_interface.lock_for_outputs() {
                     Ok(value) => {
                         if !hide_outputs {
                             for output in &value.outputs {
@@ -340,6 +339,7 @@ fn run_scan(matches: &clap::ArgMatches) {
                     Err(_) => break,
                 }
             }
+            info!("{} currently processing", async_interface.batches_pending_processing());
             info!(
                 "finished scan and received {} output(s)",
                 output_batch.outputs.len()

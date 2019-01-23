@@ -13,6 +13,9 @@ extern crate regex;
 extern crate ron;
 extern crate url;
 extern crate scraper;
+#[macro_use]
+extern crate log;
+extern crate simplelog;
 
 pub mod common;
 pub mod query;
