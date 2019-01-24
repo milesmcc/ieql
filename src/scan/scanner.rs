@@ -67,6 +67,27 @@ impl AsyncScanInterface {
         self.pending_processing.lock().unwrap().clone() // unsafe?
     }
 
+    /// Retrieve the current outputs, if available. This will never lock
+    /// the calling thread. Note that once outputs are received, they are
+    /// no longer present in the `AsyncScanInterface`. Keep them somewhere
+    /// safe!
+    pub fn outputs(&self) -> Vec<OutputBatch> {
+        let mut outputs: Vec<OutputBatch> = Vec::new();
+        let mut received = self.incoming_outputs.try_recv();
+        loop {
+            match received {
+                Ok(values) => {
+                    outputs.push(values);
+                    received = self.incoming_outputs.try_recv();
+                },
+                Err(_) => break,
+            }
+        }
+        outputs
+
+        // Could this be compressed to one line? I imagine so.
+    }
+
     /// Signal to the scan engine to shut down. Sending documents
     /// will no longer be possible.
     pub fn shutdown(&mut self) {
