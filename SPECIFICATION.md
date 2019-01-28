@@ -63,7 +63,7 @@ The **scope** defines the type of data that will be fed to the triggers. The **s
 
 **`documents`** (string) must be a valid pattern object, and matches the URL of documents. For example, for a IEQL query to be only performed on `.net` or `.org` domains, `documents` would be set to match the pattern `(https?:\/\/)?(www\.)?[a-z0-9-]+\.(net|org)(\.[a-z]{2,3})?`. It seems complicated, but that's the power of RegEx! To match all URLs, set `documents` to the RegEx pattern object representing `.+`.
 
-**`content`** (string) may be one of `Raw` or `Text`. (Additional values are possible; refer to your implementations' source code for more information about the available content types.) `Raw` means that the triggers will be fed the raw document content. `Text` means that the trigger will be fed a cleaned version of the document with only its text (note that this functionality is only available for some content types; if the raw text cannot be extracted, the program will be provided the equivalent of `Raw`).
+**`content`** may be one of `Raw` or `Text`. (Additional values are possible; refer to your implementations' source code for more information about the available content types.) `Raw` means that the triggers will be fed the raw document content. `Text` means that the trigger will be fed a cleaned version of the document with only its text (note that this functionality is only available for some content types; if the raw text cannot be extracted, the program will be provided the equivalent of `Raw`).
 
 An example scope definition might be as follows:
 
