@@ -36,7 +36,7 @@ pub trait Scanner: Clone + Send {
 pub struct AsyncScanInterface {
     outgoing_batches: Option<mpsc::Sender<DocumentReferenceBatch>>,
     incoming_outputs: mpsc::Receiver<OutputBatch>,
-    pending_processing: Arc<Mutex<usize>>,
+    pending_processing: Arc<Mutex<isize>>, // having as `isize` avoids panics
 }
 
 impl AsyncScanInterface {
@@ -63,7 +63,7 @@ impl AsyncScanInterface {
     /// Lock the current thread and determine the total number of batches
     /// that are currently processing (i.e. the total size of the current
     /// inter-thread queue).
-    pub fn batches_pending_processing(&self) -> usize {
+    pub fn batches_pending_processing(&self) -> isize {
         self.pending_processing.lock().unwrap().clone() // unsafe?
     }
 
@@ -183,7 +183,7 @@ impl Scanner for CompiledQueryGroup {
 
     fn scan_concurrently(&self, threads: u8) -> AsyncScanInterface {
         let (incoming_transmitter, incoming_receiver) = mpsc::channel::<DocumentReferenceBatch>();
-        let pending_processing = Arc::new(Mutex::new(0));
+        let pending_processing = Arc::new(Mutex::new(0 as isize));
 
         // println!("scanning concurrently");
         let (ultimate_transmitter, ultimate_receiver) = mpsc::channel::<OutputBatch>();
