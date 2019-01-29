@@ -126,8 +126,6 @@ impl CompiledPattern {
                     end = other.len() as i64 - 1;
                 }
 
-                info!("start: {} end: {} relevant: {}", start, end, relevant_start);
-
                 Some(PatternMatch {
                     excerpt: other.chars().skip(start as usize).take((end - start) as usize).collect(), // TODO: only include a smaller excerpt, not the whole thing
                     relevant: (relevant_start as usize, (relevant_start + relevant_diff) as usize)
