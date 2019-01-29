@@ -162,7 +162,7 @@ impl CompilableTo<CompiledQueryGroup> for QueryGroup {
     /// Compiles the `QueryGroup` into a `CompiledQueryGroup`. Like
     /// all compilation operations, this is expensive.
     fn compile(&self) -> Result<CompiledQueryGroup, Issue> {
-        let OPTIMIZE_FOR_SCOPE_CONTENT = ScopeContent::Raw;
+        let optimized_content = ScopeContent::Text;
 
         let mut queries: Vec<CompiledQuery> = Vec::new();
         let mut sub_regexes: Vec<String> = Vec::new();
@@ -202,7 +202,7 @@ impl CompilableTo<CompiledQueryGroup> for QueryGroup {
             };
             let (relevant_trigger_ids, is_inverse) =
                 recursively_analyze_threshold(&query.threshold);
-            if is_inverse || (query.scope.content != OPTIMIZE_FOR_SCOPE_CONTENT) {
+            if is_inverse || (query.scope.content != optimized_content) {
                 always_runs.push(compiled_query);
             } else {
                 let query_index = queries.len();
@@ -231,7 +231,7 @@ impl CompilableTo<CompiledQueryGroup> for QueryGroup {
             regex_collected: regex_set,
             regex_collected_query_index: sub_regexes_index,
             always_run_queries: always_runs,
-            regex_feed: OPTIMIZE_FOR_SCOPE_CONTENT,
+            regex_feed: optimized_content,
         })
     }
 }
@@ -380,7 +380,7 @@ mod tests {
     #[test]
     fn test_basic_compilation() {
         let basic_query = get_basic_query();
-        basic_query.compile(); // can it do it without panicking?
+        assert!(basic_query.compile().is_ok()); // can it do it without panicking?
     }
 
     #[test]
@@ -442,6 +442,6 @@ mod tests {
             id: Some(String::from("Test Trigger #2 (inverse)")),
         };
         let group = QueryGroup { queries: queries };
-        group.compile();
+        assert!(group.compile().is_ok());
     }
 }

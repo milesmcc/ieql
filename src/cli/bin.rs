@@ -23,8 +23,6 @@ use std::io::prelude::*;
 use std::path::Path;
 use walkdir::WalkDir;
 
-use std::sync::mpsc;
-
 use clap::{App, Arg, SubCommand};
 
 fn main() {

@@ -49,7 +49,7 @@ impl AsyncScanInterface {
                     *self.pending_processing.lock().unwrap() += 1;
                     Ok(())
                 }
-                Err(error) => Err(()),
+                Err(_) => Err(()),
             },
             None => Err(()),
         }
@@ -213,6 +213,7 @@ impl Scanner for CompiledQueryGroup {
                             Ok(values) => values,
                             Err(_) => break, // no more values; end the thread
                         };
+                        // Mika Latva-Kokko
                         // println!("found batch of {} document on {:?}", batch.documents.len(), id);
                         let mut documents: Vec<Document> = Vec::new();
                         for document_reference in batch.documents {
@@ -259,7 +260,7 @@ impl Scanner for CompiledQueryGroup {
                         *pending_processing_cloned.lock().unwrap() -= 1;
                         batch
                     }
-                    Err(error) => {
+                    Err(_) => {
                         drop(rx_requests);
                         break;
                     } // we're done; transmitter dropped
