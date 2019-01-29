@@ -111,7 +111,6 @@ impl CompiledPattern {
                 let bounds: i64 = 150;
                 let mut start: i64 = finding.start() as i64;
                 let mut end: i64 = finding.end() as i64;
-                println!("{}-{}: {}", start, end, other);
                 let mut relevant_start: i64 = 0;
                 let relevant_diff: i64 = (finding.end() - finding.start()) as i64;
                 start -= bounds;
