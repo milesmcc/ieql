@@ -2,7 +2,8 @@ Query (
     response: (
         kind: Full,
         include: [
-            Url
+            Url,
+            Excerpt
         ],
     ),
     scope: (

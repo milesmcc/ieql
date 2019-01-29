@@ -1,5 +1,4 @@
 //! This file includes `Pattern`s' data structures and implementations.
-
 use common::validation::{Validatable, Issue};
 use regex;
 use common::compilation::CompilableTo;
@@ -109,9 +108,29 @@ impl CompiledPattern {
     pub fn full_check(&self, other: &String) -> Option<PatternMatch> {
         match self.regex.find(&other) {
             Some(finding) => {
+                let bounds: i64 = 150;
+                let mut start: i64 = finding.start() as i64;
+                let mut end: i64 = finding.end() as i64;
+                let mut relevant_start: i64 = 0;
+                let relevant_diff: i64 = (finding.end() - finding.start()) as i64;
+                start -= bounds;
+                end += bounds;
+                relevant_start += bounds;
+
+                if start < 0 {
+                    relevant_start -= start * -1;
+                    start = 0;
+                }
+
+                if end > other.len() as i64 {
+                    end = other.len() as i64 - 1;
+                }
+
+                info!("start: {} end: {} relevant: {}", start, end, relevant_start);
+
                 Some(PatternMatch {
-                    excerpt: other.clone(), // TODO: only include a smaller excerpt, not the whole thing
-                    relevant: (finding.start(), finding.end())
+                    excerpt: other.chars().skip(start as usize).take((end - start) as usize).collect(), // TODO: only include a smaller excerpt, not the whole thing
+                    relevant: (relevant_start as usize, (relevant_start + relevant_diff) as usize)
                 })
             },
             None => None
@@ -130,4 +149,5 @@ impl Validatable for Pattern {
             Ok(_) => None
         } // TODO: more expansive (and expensive) checking
     }
+    // Miles McCain
 }
