@@ -15,19 +15,27 @@ Query (
     ),
     threshold: (
         considers: [
-            Trigger("name")
+            Trigger("0"),
+            Trigger("1")
         ],
-        requires: 1,
+        requires: 2,
         inverse: false,
     ),
     triggers: [
         (
             pattern: (
-                content: "Miles McCain",
+                content: "M[aä]rtens",
                 kind: RegEx,
             ),
-            id: "name",
+            id: "0",
+        ),
+        (
+            pattern: (
+                content: "G[uü]ntersen",
+                kind: RegEx,
+            ),
+            id: "1",
         )
     ],
-    id: Some("name trigger"),
+    id: Some("Liv"),
 )

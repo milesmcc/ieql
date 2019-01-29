@@ -147,5 +147,4 @@ impl Validatable for Pattern {
             Ok(_) => None
         } // TODO: more expansive (and expensive) checking
     }
-    // Miles McCain
 }
