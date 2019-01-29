@@ -111,6 +111,7 @@ impl CompiledPattern {
                 let bounds: i64 = 150;
                 let mut start: i64 = finding.start() as i64;
                 let mut end: i64 = finding.end() as i64;
+                println!("{}-{}: {}", start, end, other);
                 let mut relevant_start: i64 = 0;
                 let relevant_diff: i64 = (finding.end() - finding.start()) as i64;
                 start -= bounds;
@@ -126,8 +127,10 @@ impl CompiledPattern {
                     end = other.len() as i64 - 1;
                 }
 
+                let excerpt = String::from_utf8_lossy(&other.as_bytes()[start as usize..end as usize]).to_string();
+
                 Some(PatternMatch {
-                    excerpt: other.chars().skip(start as usize).take((end - start) as usize).collect(), // TODO: only include a smaller excerpt, not the whole thing
+                    excerpt: excerpt, // TODO: only include a smaller excerpt, not the whole thing
                     relevant: (relevant_start as usize, (relevant_start + relevant_diff) as usize)
                 })
             },
