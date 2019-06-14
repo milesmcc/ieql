@@ -67,6 +67,8 @@ pub enum OutputItem {
     Domain(Option<String>),
     /// Contains any number of `PatternMatch`es—in other words, excerpts.
     Excerpt(Vec<PatternMatch>),
+    /// Contains the full content of the matched page
+    FullContent(Option<String>)
 }
 
 /// Represents a batch (collection) of outputs. This function tends to be
@@ -122,6 +124,7 @@ impl Output {
                     items.push(OutputItem::Url(string_clone_helper(&document.url)))
                 }
                 ResponseItem::Excerpt => items.push(OutputItem::Excerpt(matches.clone())),
+                ResponseItem::FullContent => items.push(OutputItem::FullContent(Some((&document.raw).clone())))
             }
         }
         Output {

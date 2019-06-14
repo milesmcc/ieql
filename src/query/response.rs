@@ -57,6 +57,8 @@ pub enum ResponseItem {
     Domain,
     /// Denotes that any number of `PatternMatch`es—in other words, excerpts—should be included.
     Excerpt,
+    /// Denotes that the full content of the web page should be included
+    FullContent,
 }
 
 impl Validatable for Response {

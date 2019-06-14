@@ -152,6 +152,7 @@ The **response** defines the type of data that the IEQL query will return. It mu
 * `Url` (full only)
 * `Domain`
 * `Mime`
+* `FullContent`
 
 #### Example Full Query
 
