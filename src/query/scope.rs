@@ -29,7 +29,7 @@ pub struct CompiledScope {
 }
 
 /// Denotes a form of text data to be passed to the query.
-#[derive(Copy, Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Copy, Clone, Serialize, Deserialize, Debug, PartialEq, Eq, Hash)]
 pub enum ScopeContent {
     /// The raw data—usually either HTML or utf8 extracted from
     /// web data/PDFs.

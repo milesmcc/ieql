@@ -12,9 +12,10 @@ extern crate serde;
 extern crate regex;
 extern crate ron;
 extern crate url;
-extern crate scraper;
 extern crate log;
 extern crate simplelog;
+extern crate lazy_static;
+extern crate htmlescape;
 
 pub mod common;
 pub mod query;

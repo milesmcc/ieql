@@ -14,6 +14,7 @@ use ieql::common::validation::{Issue, Validatable};
 use ieql::input::document::{Document, DocumentBatch, DocumentReference,
     DocumentReferenceBatch,
 };
+use ieql::ScopeContent;
 use ieql::output::output::OutputBatch;
 use ieql::query::query::{Query, QueryGroup};
 use ieql::scan::scanner::{Scanner, AsyncScanInterface};
@@ -119,11 +120,11 @@ fn get_queries_from_file(file: String) -> QueryGroup {
             Ok(value) => value,
             Err(error) => {
                 error!("unable to load query `{}` (`{}`), skipping...", file, error);
-                return QueryGroup { queries: vec![] };
+                return QueryGroup { queries: vec![], optimized_content: ScopeContent::Raw };
             }
         });
     }
-    QueryGroup { queries: queries }
+    QueryGroup { queries: queries, optimized_content: ScopeContent::Raw }
 }
 
 fn write_output_batch_to_file(

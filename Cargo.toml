@@ -1,6 +1,6 @@
 [package]
 name = "ieql"
-version = "0.2.8"
+version = "0.3.0"
 authors = ["R. Miles McCain <ieql@sendmiles.email>"]
 readme = "README.md"
 license = "GPL-3.0"
@@ -10,7 +10,7 @@ repository = "https://github.com/milesmcc/ieql"
 description = "An open standard and implementation for monitoring Internet content"
 
 [dependencies]
-regex = "1.3"
+regex = "1"
 serde = "1.0"
 serde_derive = "1.0"
 ron = "0.4"
@@ -18,9 +18,10 @@ url = "2.1"
 clap = "2.33"
 simplelog = "0.5"
 log = "0.4"
-scraper = "0.11"
 walkdir = "2.2"
 rand = "0.7"
+lazy_static = "1.4"
+htmlescape = "0.3.1"
 
 [[bin]]
 name = "ieql"

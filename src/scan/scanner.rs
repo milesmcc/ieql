@@ -10,7 +10,6 @@ use input::document::{
 use output::output::{Output, OutputBatch};
 use query::query::{CompiledQuery, CompiledQueryGroup};
 use std::collections::{HashMap, HashSet};
-
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -149,20 +148,23 @@ impl Scanner for CompiledQueryGroup {
 
         // Regex Set evaluation
         let to_feed = document.content(self.regex_feed);
-        let matches: Vec<_> = self.regex_collected.matches(to_feed).into_iter().collect();
-        let mut queries_to_run: HashSet<usize> = HashSet::new();
-        for match_item in matches {
-            queries_to_run.insert(match self.regex_collected_query_index.get(match_item) {
-                Some(index) => *index,
-                None => return OutputBatch::from(vec![]), // this should never happen; should we panic? TODO
-            });
-        }
-        for query_index in queries_to_run {
-            let query = match self.queries.get(query_index) {
-                Some(value) => value,
-                None => return OutputBatch::from(vec![]), // this should also never happen; should we panic? TODO
-            };
-            output_batch.merge_with(query.scan_single(document));
+        if self.regex_collected.is_match(to_feed) {
+            let matches: Vec<_> = self.regex_collected.matches(to_feed).into_iter().collect();
+            let mut queries_to_run: HashSet<usize> = HashSet::new();
+            for match_item in matches {
+                queries_to_run.insert(match self.regex_collected_query_index.get(match_item) {
+                    Some(index) => *index,
+                    None => return OutputBatch::from(vec![]), // this should never happen; should we panic? TODO
+                });
+            }
+            for query_index in queries_to_run {
+                let query = match self.queries.get(query_index) {
+                    Some(value) => value,
+                    None => return OutputBatch::from(vec![]), // this should also never happen; should we panic? TODO
+                };
+                output_batch.merge_with(query.scan_single(document));
+            }
+
         }
 
         // Always runs
@@ -213,8 +215,6 @@ impl Scanner for CompiledQueryGroup {
                             Ok(values) => values,
                             Err(_) => break, // no more values; end the thread
                         };
-                        // Mika Latva-Kokko
-                        // println!("found batch of {} document on {:?}", batch.documents.len(), id);
                         let mut documents: Vec<Document> = Vec::new();
                         for document_reference in batch.documents {
                             documents.push(match document_reference {

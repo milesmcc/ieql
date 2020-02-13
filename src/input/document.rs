@@ -3,8 +3,15 @@
 use common::compilation::CompilableTo;
 use common::validation::Issue;
 use query::scope::ScopeContent;
-use scraper::Html;
+use regex::Regex;
 use url::Url;
+use lazy_static::lazy_static;
+use htmlescape::decode_html;
+
+lazy_static! {
+    static ref HTML_REGEX: Regex = Regex::new(r"<(.*?)>").unwrap();
+    static ref SPACE_REGEX: Regex = Regex::new(r"\s{2,}").unwrap();
+}
 
 /// The `Document` struct represents any kind of document, but typically
 /// some sort of Internet document. A `Document` can often be quite large;
@@ -12,6 +19,7 @@ use url::Url;
 ///
 /// In practice, this struct functions more as an interim format as data becomes
 /// a `CompiledDocument`.
+#[derive(Clone)]
 pub struct Document {
     /// `url` represents the URL of the document, if it is present.
     ///
@@ -20,7 +28,7 @@ pub struct Document {
     /// `Some("/path/to/file")`.
     pub url: Option<String>,
     /// `data` contains the data of the document.
-    /// 
+    ///
     /// This data is stored as a `Vec<u8>` primarily for first-class text
     /// document support (`utf8`).
     pub data: Vec<u8>,
@@ -32,10 +40,10 @@ pub struct Document {
 /// already loaded into memory or exists at some path. This path can,
 /// in theory, be a URL or a relative (or absolute) path on the user's
 /// local filesystem.
-/// 
+///
 /// Currently, only local paths are supported. URLs will be supported
-/// in a future version of IEQL. 
-/// 
+/// in a future version of IEQL.
+///
 /// The benefit of `DocumentReference` lies primarily in multithreading.
 /// Using `DocumentReference`s allows for file IO to be parallelized.
 /// (By passing a `DocumentReference` or `DocumentReferenceBatch` to
@@ -50,9 +58,9 @@ pub enum DocumentReference {
     Unpopulated(String),
 }
 
-/// Represents a batch (collection in the form of a `Vec`) of 
+/// Represents a batch (collection in the form of a `Vec`) of
 /// `DocumentReference`s.
-/// 
+///
 /// This struct is particularly useful for scanning, as it allows
 /// one function call to take many different document references.
 /// It also enables 'processing groups'—i.e. groups of documents that
@@ -65,11 +73,11 @@ pub struct DocumentReferenceBatch {
 /// A `CompiledDocument` is a `Document` that has been processed and
 /// is ready to be scanned. During compilation, the IEQL document compiler
 /// extracts the following information from the `Document`:
-/// 
+///
 /// * **text** — the text of the document. Currently, only HTML parsing is supported.
 /// * **domain** — the domain name, if present, is also processed.
 /// * **raw** — unlike `Documents`, whose contents are bytes, `CompiledDocuments` have text.
-/// 
+///
 /// In cases that the document is not HTML, `text` is identical to `raw`.
 pub struct CompiledDocument {
     pub url: Option<String>,
@@ -152,15 +160,12 @@ impl Document {
     fn extract_document_text(&self) -> String {
         match &self.detect_document_kind() {
             DocumentKind::Html => {
-                let document = Html::parse_fragment(self.raw().as_str());
-                let words = document.root_element().text().collect::<Vec<_>>();
-                let mut text: String = words.join(" ");
-                while text.contains("  ") {
-                    // Remove double spaces
-                    text = text.replace("  ", " ");
+                let extracted = String::from(SPACE_REGEX.replace_all(&HTML_REGEX.replace_all(&self.raw(), " "), " "));
+                match decode_html(extracted.as_str()) {
+                    Ok(value) => value,
+                    Err(_) => extracted
                 }
-                text
-            }
+            },
             DocumentKind::Unknown => self.raw(),
         }
     }
