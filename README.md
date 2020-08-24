@@ -2,7 +2,7 @@
   <h3 align="center"><img src="assets/ieql_logo.png" width="250px"></img></h3>
 
   <h4 align="center">
-     An open standard for monitoring Internet content
+     An open system for monitoring Internet content
   </h4>
 </p>
 
